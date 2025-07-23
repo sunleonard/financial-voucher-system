@@ -1,0 +1,273 @@
+<!-- templates/users/create.html -->
+{% extends "base.html" %}
+
+{% block title %}Create User{% endblock %}
+{% block page_title %}Create New User{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-user-plus me-2"></i>Create New User
+                </h5>
+            </div>
+            <div class="card-body">
+                <form method="POST" id="createUserForm">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="username" class="form-label">Username <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="username" name="username" 
+                                       required minlength="3" maxlength="50" pattern="[a-zA-Z0-9_]+">
+                                <div class="form-text">3-50 characters, letters, numbers, and underscores only</div>
+                                <div class="invalid-feedback" id="usernameError"></div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="email" class="form-label">Email <span class="text-danger">*</span></label>
+                                <input type="email" class="form-control" id="email" name="email" required>
+                                <div class="invalid-feedback" id="emailError"></div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="password" class="form-label">Password <span class="text-danger">*</span></label>
+                                <input type="password" class="form-control" id="password" name="password" 
+                                       required minlength="8">
+                                <div class="form-text">Minimum 8 characters with uppercase, lowercase, number, and special character</div>
+                                <div class="invalid-feedback" id="passwordError"></div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="confirm_password" class="form-label">Confirm Password <span class="text-danger">*</span></label>
+                                <input type="password" class="form-control" id="confirm_password" name="confirm_password" required>
+                                <div class="invalid-feedback" id="confirmPasswordError"></div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="role" class="form-label">Role <span class="text-danger">*</span></label>
+                                <select class="form-select" id="role" name="role" required>
+                                    <option value="user" selected>User</option>
+                                    <option value="admin">Administrator</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="company_id" class="form-label">Company</label>
+                                <select class="form-select" id="company_id" name="company_id">
+                                    <option value="">No Company</option>
+                                    {% for company in companies %}
+                                    <option value="{{ company.company_id }}">
+                                        {{ company.company_name }} ({{ company.company_id }})
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save me-2"></i>Create User
+                        </button>
+                        <a href="{{ url_for('users.list_users') }}" class="btn btn-secondary">
+                            <i class="fas fa-times me-2"></i>Cancel
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h6 class="card-title mb-0">Password Requirements</h6>
+            </div>
+            <div class="card-body">
+                <ul class="list-unstyled mb-0">
+                    <li class="mb-2"><i class="fas fa-check-circle text-muted me-2" id="length-check"></i>At least 8 characters</li>
+                    <li class="mb-2"><i class="fas fa-check-circle text-muted me-2" id="upper-check"></i>One uppercase letter</li>
+                    <li class="mb-2"><i class="fas fa-check-circle text-muted me-2" id="lower-check"></i>One lowercase letter</li>
+                    <li class="mb-2"><i class="fas fa-check-circle text-muted me-2" id="number-check"></i>One number</li>
+                    <li class="mb-0"><i class="fas fa-check-circle text-muted me-2" id="special-check"></i>One special character</li>
+                </ul>
+            </div>
+        </div>
+        
+        <div class="card mt-3">
+            <div class="card-header">
+                <h6 class="card-title mb-0">User Roles</h6>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <h6 class="text-primary">Administrator</h6>
+                    <ul class="small text-muted mb-0">
+                        <li>Full system access</li>
+                        <li>User management</li>
+                        <li>Company management</li>
+                        <li>System configuration</li>
+                    </ul>
+                </div>
+                <div>
+                    <h6 class="text-secondary">User</h6>
+                    <ul class="small text-muted mb-0">
+                        <li>Create vouchers</li>
+                        <li>View own records</li>
+                        <li>Update profile</li>
+                        <li>Limited access</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('createUserForm');
+    const username = document.getElementById('username');
+    const email = document.getElementById('email');
+    const password = document.getElementById('password');
+    const confirmPassword = document.getElementById('confirm_password');
+    
+    // Real-time username validation
+    username.addEventListener('blur', function() {
+        if (this.value.trim()) {
+            checkUsername(this.value.trim());
+        }
+    });
+    
+    // Real-time email validation
+    email.addEventListener('blur', function() {
+        if (this.value.trim()) {
+            checkEmail(this.value.trim());
+        }
+    });
+    
+    // Password strength indicator
+    password.addEventListener('input', function() {
+        checkPasswordStrength(this.value);
+    });
+    
+    // Confirm password validation
+    confirmPassword.addEventListener('input', function() {
+        validatePasswordMatch();
+    });
+    
+    // Form submission validation
+    form.addEventListener('submit', function(e) {
+        if (!validateForm()) {
+            e.preventDefault();
+        }
+    });
+    
+    function checkUsername(username) {
+        fetch(`/users/api/check-username?username=${encodeURIComponent(username)}`)
+            .then(response => response.json())
+            .then(data => {
+                const input = document.getElementById('username');
+                const error = document.getElementById('usernameError');
+                
+                if (data.available) {
+                    input.classList.remove('is-invalid');
+                    input.classList.add('is-valid');
+                    error.textContent = '';
+                } else {
+                    input.classList.remove('is-valid');
+                    input.classList.add('is-invalid');
+                    error.textContent = data.message;
+                }
+            });
+    }
+    
+    function checkEmail(email) {
+        fetch(`/users/api/check-email?email=${encodeURIComponent(email)}`)
+            .then(response => response.json())
+            .then(data => {
+                const input = document.getElementById('email');
+                const error = document.getElementById('emailError');
+                
+                if (data.available) {
+                    input.classList.remove('is-invalid');
+                    input.classList.add('is-valid');
+                    error.textContent = '';
+                } else {
+                    input.classList.remove('is-valid');
+                    input.classList.add('is-invalid');
+                    error.textContent = data.message;
+                }
+            });
+    }
+    
+    function checkPasswordStrength(password) {
+        const checks = {
+            length: password.length >= 8,
+            upper: /[A-Z]/.test(password),
+            lower: /[a-z]/.test(password),
+            number: /\d/.test(password),
+            special: /[!@#$%^&*(),.?":{}|<>]/.test(password)
+        };
+        
+        Object.keys(checks).forEach(check => {
+            const element = document.getElementById(`${check}-check`);
+            if (checks[check]) {
+                element.className = 'fas fa-check-circle text-success me-2';
+            } else {
+                element.className = 'fas fa-check-circle text-muted me-2';
+            }
+        });
+        
+        validatePasswordMatch();
+    }
+    
+    function validatePasswordMatch() {
+        const password = document.getElementById('password').value;
+        const confirmPassword = document.getElementById('confirm_password');
+        const error = document.getElementById('confirmPasswordError');
+        
+        if (confirmPassword.value && password !== confirmPassword.value) {
+            confirmPassword.classList.add('is-invalid');
+            error.textContent = 'Passwords do not match';
+        } else if (confirmPassword.value) {
+            confirmPassword.classList.remove('is-invalid');
+            confirmPassword.classList.add('is-valid');
+            error.textContent = '';
+        }
+    }
+    
+    function validateForm() {
+        const inputs = form.querySelectorAll('input[required], select[required]');
+        let isValid = true;
+        
+        inputs.forEach(input => {
+            if (!input.value.trim()) {
+                input.classList.add('is-invalid');
+                isValid = false;
+            }
+        });
+        
+        // Check password match
+        if (password.value !== confirmPassword.value) {
+            isValid = false;
+        }
+        
+        return isValid;
+    }
+});
+</script>
+{% endblock %}

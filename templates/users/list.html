@@ -1,0 +1,278 @@
+<!-- templates/users/list.html -->
+{% extends "base.html" %}
+
+{% block title %}User Management{% endblock %}
+{% block page_title %}User Management{% endblock %}
+
+{% block content %}
+{% if is_first_setup %}
+<!-- First-time Setup Banner -->
+<div class="alert alert-info alert-dismissible fade show" role="alert">
+    <h5 class="alert-heading">
+        <i class="fas fa-rocket me-2"></i>Welcome to Your Financial System!
+    </h5>
+    <p class="mb-2">You're the only user in the system right now. To get started:</p>
+    <ul class="mb-3">
+        <li><strong>Add team members</strong> - Create user accounts for your colleagues</li>
+        <li><strong>Set up companies</strong> - Add the companies you'll be managing</li>
+        <li><strong>Configure permissions</strong> - Assign appropriate roles to users</li>
+    </ul>
+    <p class="mb-0">Once you've added other users, you'll be taken to the main dashboard where you can manage vouchers and financial data.</p>
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+</div>
+{% endif %}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="fas fa-users me-2"></i>User Management</h2>
+    <div>
+        {% if not is_first_setup %}
+        <a href="{{ url_for('dashboard.index') }}" class="btn btn-outline-primary me-2">
+            <i class="fas fa-tachometer-alt me-2"></i>Go to Dashboard
+        </a>
+        {% endif %}
+        <a href="{{ url_for('users.create_user') }}" class="btn btn-primary">
+            <i class="fas fa-plus me-2"></i>Add New User
+        </a>
+    </div>
+</div>
+
+<!-- Statistics Cards -->
+{% if is_first_setup %}
+<!-- Quick Setup Card for first-time users -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card border-primary">
+            <div class="card-header bg-primary text-white">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-magic me-2"></i>Quick Setup Guide
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <div class="text-center">
+                            <div class="mb-3">
+                                <i class="fas fa-user-plus fa-3x text-primary"></i>
+                            </div>
+                            <h6>1. Add Users</h6>
+                            <p class="text-muted mb-3">Create accounts for team members who will use the system</p>
+                            <a href="{{ url_for('users.create_user') }}" class="btn btn-primary">
+                                <i class="fas fa-plus me-2"></i>Add First User
+                            </a>
+                        </div>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <div class="text-center">
+                            <div class="mb-3">
+                                <i class="fas fa-building fa-3x text-info"></i>
+                            </div>
+                            <h6>2. Set Up Companies</h6>
+                            <p class="text-muted mb-3">Add companies you'll be managing vouchers for</p>
+                            <button class="btn btn-outline-info" disabled>
+                                <i class="fas fa-building me-2"></i>Coming Soon
+                            </button>
+                        </div>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <div class="text-center">
+                            <div class="mb-3">
+                                <i class="fas fa-file-invoice fa-3x text-success"></i>
+                            </div>
+                            <h6>3. Create Vouchers</h6>
+                            <p class="text-muted mb-3">Start managing your financial vouchers and payments</p>
+                            <button class="btn btn-outline-success" disabled>
+                                <i class="fas fa-plus me-2"></i>Coming Soon
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="stats-card">
+            <h3 class="text-primary">{{ stats.total_users or 0 }}</h3>
+            <p class="mb-0">Total Users</p>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stats-card">
+            <h3 class="text-success">{{ stats.by_role.admin or 0 }}</h3>
+            <p class="mb-0">Administrators</p>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stats-card">
+            <h3 class="text-info">{{ stats.recent_logins or 0 }}</h3>
+            <p class="mb-0">Recent Logins</p>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stats-card">
+            <h3 class="text-warning">{{ stats.locked_accounts or 0 }}</h3>
+            <p class="mb-0">Locked Accounts</p>
+        </div>
+    </div>
+</div>
+
+<!-- Search and Filters -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="GET" action="{{ url_for('users.search_users') }}" class="row g-3">
+            <div class="col-md-4">
+                <input type="text" class="form-control" name="q" placeholder="Search by username or email" 
+                       value="{{ request.args.get('q', '') }}">
+            </div>
+            <div class="col-md-3">
+                <select class="form-select" name="role">
+                    <option value="">All Roles</option>
+                    <option value="admin" {{ 'selected' if request.args.get('role') == 'admin' }}>Admin</option>
+                    <option value="user" {{ 'selected' if request.args.get('role') == 'user' }}>User</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <select class="form-select" name="company">
+                    <option value="">All Companies</option>
+                    <!-- Company options would be populated here -->
+                </select>
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-outline-primary w-100">
+                    <i class="fas fa-search"></i> Search
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Users Table -->
+<div class="card">
+    <div class="card-body">
+        {% if users %}
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead class="table-light">
+                    <tr>
+                        <th>User</th>
+                        <th>Email</th>
+                        <th>Role</th>
+                        <th>Company</th>
+                        <th>Status</th>
+                        <th>Last Login</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for user in users %}
+                    <tr>
+                        <td>
+                            <div class="d-flex align-items-center">
+                                <div class="user-avatar me-2">
+                                    {{ user.username[0].upper() }}
+                                </div>
+                                <div>
+                                    <strong>{{ user.username }}</strong>
+                                    {% if user.id == current_user_id %}
+                                        <span class="badge bg-info ms-1">You</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </td>
+                        <td>{{ user.email }}</td>
+                        <td>
+                            <span class="badge bg-{{ 'primary' if user.role == 'admin' else 'secondary' }}">
+                                {{ user.role|title }}
+                            </span>
+                        </td>
+                        <td>
+                            {% if user.company_name %}
+                                {{ user.company_name }}
+                                <small class="text-muted">({{ user.company_id }})</small>
+                            {% else %}
+                                <span class="text-muted">No Company</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <span class="badge bg-{{ 'success' if user.is_active else 'danger' }}">
+                                {{ 'Active' if user.is_active else 'Inactive' }}
+                            </span>
+                        </td>
+                        <td>
+                            {% if user.last_login %}
+                                <small>{{ user.last_login }}</small>
+                            {% else %}
+                                <span class="text-muted">Never</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div class="btn-group" role="group">
+                                <a href="{{ url_for('users.view_user', user_id=user.id) }}" 
+                                   class="btn btn-sm btn-outline-primary" title="View">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+                                <a href="{{ url_for('users.edit_user', user_id=user.id) }}" 
+                                   class="btn btn-sm btn-outline-warning" title="Edit">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                                {% if user.id != current_user_id %}
+                                <button class="btn btn-sm btn-outline-danger" 
+                                        onclick="confirmDelete({{ user.id }}, '{{ user.username }}')" title="Delete">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center py-5">
+            <i class="fas fa-users fa-3x text-muted mb-3"></i>
+            <h5 class="text-muted">No users found</h5>
+            <p class="text-muted">Start by creating your first user.</p>
+            <a href="{{ url_for('users.create_user') }}" class="btn btn-primary">
+                <i class="fas fa-plus me-2"></i>Add New User
+            </a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Confirm Delete</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to delete user <strong id="deleteUsername"></strong>?</p>
+                <p class="text-muted">This action cannot be undone.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form id="deleteForm" method="POST" style="display: inline;">
+                    <button type="submit" class="btn btn-danger">Delete User</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function confirmDelete(userId, username) {
+    document.getElementById('deleteUsername').textContent = username;
+    document.getElementById('deleteForm').action = `/users/${userId}/delete`;
+    new bootstrap.Modal(document.getElementById('deleteModal')).show();
+}
+</script>
+{% endblock %}

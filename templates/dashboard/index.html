@@ -1,0 +1,470 @@
+<!-- templates/dashboard/index.html -->
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Financial System{% endblock %}
+{% block page_title %}Dashboard{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h2 class="mb-1">Welcome back, {{ user.username }}!</h2>
+                <p class="text-muted mb-0">Here's what's happening with your financial system today.</p>
+            </div>
+            <div class="text-end">
+                <small class="text-muted">Last login: 
+                    {% if user.last_login %}
+                        {{ user.last_login }}
+                    {% else %}
+                        First time login
+                    {% endif %}
+                </small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Quick Stats Cards -->
+<div class="row mb-4">
+    {% if session.role == 'admin' %}
+    <!-- Admin Statistics -->
+    <div class="col-md-3 mb-3">
+        <div class="card text-white" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h3 class="mb-0">{{ stats.user_stats.total_users or 0 }}</h3>
+                        <p class="mb-0">Total Users</p>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="fas fa-users fa-2x opacity-75"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3 mb-3">
+        <div class="card text-white bg-success">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h3 class="mb-0">{{ stats.voucher_stats.vouchers_payable.total_count or 0 }}</h3>
+                        <p class="mb-0">Total Vouchers</p>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="fas fa-file-invoice fa-2x opacity-75"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3 mb-3">
+        <div class="card text-white bg-warning">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h3 class="mb-0">{{ stats.voucher_stats.vouchers_payable.pending_count or 0 }}</h3>
+                        <p class="mb-0">Pending Vouchers</p>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="fas fa-clock fa-2x opacity-75"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3 mb-3">
+        <div class="card text-white bg-info">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h3 class="mb-0">${{ "%.2f"|format(stats.voucher_stats.vouchers_payable.total_amount or 0) }}</h3>
+                        <p class="mb-0">Total Amount</p>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="fas fa-dollar-sign fa-2x opacity-75"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <!-- User Statistics -->
+    <div class="col-md-4 mb-3">
+        <div class="card text-white" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h3 class="mb-0">{{ stats.voucher_stats.my_vouchers.total_count or 0 }}</h3>
+                        <p class="mb-0">My Vouchers</p>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="fas fa-file-invoice fa-2x opacity-75"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4 mb-3">
+        <div class="card text-white bg-warning">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h3 class="mb-0">{{ stats.voucher_stats.my_vouchers.pending_count or 0 }}</h3>
+                        <p class="mb-0">Pending</p>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="fas fa-clock fa-2x opacity-75"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4 mb-3">
+        <div class="card text-white bg-success">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h3 class="mb-0">${{ "%.2f"|format(stats.voucher_stats.my_vouchers.total_amount or 0) }}</h3>
+                        <p class="mb-0">Total Amount</p>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="fas fa-dollar-sign fa-2x opacity-75"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Charts and Recent Activity Row -->
+<div class="row">
+    <!-- Charts Column -->
+    <div class="col-md-8 mb-4">
+        <!-- Monthly Vouchers Chart -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-chart-line me-2"></i>Monthly Voucher Trends
+                </h5>
+            </div>
+            <div class="card-body">
+                <canvas id="monthlyChart" height="300"></canvas>
+            </div>
+        </div>
+        
+        {% if session.role == 'admin' %}
+        <!-- Company Breakdown Chart (Admin Only) -->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-chart-pie me-2"></i>Top Companies by Volume
+                </h5>
+            </div>
+            <div class="card-body">
+                <canvas id="companyChart" height="200"></canvas>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+    
+    <!-- Recent Activity Column -->
+    <div class="col-md-4">
+        <!-- Quick Actions -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-bolt me-2"></i>Quick Actions
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <a href="#" class="btn btn-primary">
+                        <i class="fas fa-plus me-2"></i>New Voucher Payable (Soon)
+                    </a>
+                    <a href="#" class="btn btn-outline-primary">
+                        <i class="fas fa-check me-2"></i>New Check Voucher (Soon)
+                    </a>
+                    <a href="#" class="btn btn-outline-secondary">
+                        <i class="fas fa-university me-2"></i>New Bank Memo (Soon)
+                    </a>
+                    {% if session.role == 'admin' %}
+                    <a href="{{ url_for('users.create_user') }}" class="btn btn-outline-info">
+                        <i class="fas fa-user-plus me-2"></i>Add User
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <!-- Recent Activities -->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-history me-2"></i>Recent Activity
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if recent_activities %}
+                <div class="activity-feed">
+                    {% for activity in recent_activities %}
+                    <div class="activity-item d-flex mb-3">
+                        <div class="activity-icon me-3">
+                            <i class="fas fa-{{ 'user' if activity.action.startswith('LOGIN') else 'edit' if activity.action.startswith('UPDATE') else 'plus' if activity.action.startswith('CREATE') else 'trash' if activity.action.startswith('DELETE') else 'cog' }} text-primary"></i>
+                        </div>
+                        <div class="activity-content flex-grow-1">
+                            <div class="activity-description">
+                                {% if session.role == 'admin' %}
+                                    <strong>{{ activity.username or 'System' }}</strong> 
+                                {% endif %}
+                                {{ activity.action.replace('_', ' ').title() }}
+                                {% if activity.table_name %}
+                                    on {{ activity.table_name.replace('_', ' ').title() }}
+                                {% endif %}
+                            </div>
+                            <small class="text-muted">
+                                {{ activity.timestamp }}
+                                {% if session.role == 'admin' and activity.ip_address %}
+                                    from {{ activity.ip_address }}
+                                {% endif %}
+                            </small>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                
+                {% if session.role == 'admin' %}
+                <div class="text-center">
+                    <a href="#" class="btn btn-sm btn-outline-primary">
+                        View All Activity (Coming Soon)
+                    </a>
+                </div>
+                {% endif %}
+                {% else %}
+                <div class="text-center text-muted py-3">
+                    <i class="fas fa-inbox fa-2x mb-2"></i>
+                    <p class="mb-0">No recent activity</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Additional Admin Sections -->
+{% if session.role == 'admin' %}
+<div class="row mt-4">
+    <!-- System Status -->
+    <div class="col-md-6 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-server me-2"></i>System Status
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row text-center">
+                    <div class="col-4">
+                        <div class="border-end">
+                            <h6 class="text-success">{{ stats.system_stats.record_counts.users or 0 }}</h6>
+                            <small class="text-muted">Users</small>
+                        </div>
+                    </div>
+                    <div class="col-4">
+                        <div class="border-end">
+                            <h6 class="text-info">{{ stats.system_stats.record_counts.vouchers_payable or 0 }}</h6>
+                            <small class="text-muted">Vouchers</small>
+                        </div>
+                    </div>
+                    <div class="col-4">
+                        <h6 class="text-warning">{{ stats.system_stats.recent_activities or 0 }}</h6>
+                        <small class="text-muted">Today's Actions</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Top Companies -->
+    <div class="col-md-6 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-building me-2"></i>Top Companies
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if stats.financial_summary.top_companies %}
+                {% for company in stats.financial_summary.top_companies[:3] %}
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <div>
+                        <strong>{{ company.company_name }}</strong>
+                        <br><small class="text-muted">{{ company.company_id }}</small>
+                    </div>
+                    <div class="text-end">
+                        <strong>${{ "%.2f"|format(company.total_amount) }}</strong>
+                        <br><small class="text-muted">{{ company.voucher_count }} vouchers</small>
+                    </div>
+                </div>
+                {% if not loop.last %}<hr class="my-2">{% endif %}
+                {% endfor %}
+                {% else %}
+                <div class="text-center text-muted py-3">
+                    <p class="mb-0">No company data available</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Monthly Vouchers Chart
+    const monthlyCtx = document.getElementById('monthlyChart').getContext('2d');
+    
+    // Sample data - in real app, this would come from the server
+    const monthlyData = {
+        labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
+        datasets: [{
+            label: 'Voucher Count',
+            data: [12, 19, 3, 5, 2, 3],
+            borderColor: 'rgb(102, 126, 234)',
+            backgroundColor: 'rgba(102, 126, 234, 0.1)',
+            tension: 0.4
+        }, {
+            label: 'Amount ($)',
+            data: [1200, 1900, 300, 500, 200, 300],
+            borderColor: 'rgb(118, 75, 162)',
+            backgroundColor: 'rgba(118, 75, 162, 0.1)',
+            tension: 0.4,
+            yAxisID: 'y1'
+        }]
+    };
+    
+    new Chart(monthlyCtx, {
+        type: 'line',
+        data: monthlyData,
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    type: 'linear',
+                    display: true,
+                    position: 'left',
+                },
+                y1: {
+                    type: 'linear',
+                    display: true,
+                    position: 'right',
+                    grid: {
+                        drawOnChartArea: false,
+                    },
+                }
+            },
+            plugins: {
+                legend: {
+                    position: 'top',
+                }
+            }
+        }
+    });
+    
+    {% if session.role == 'admin' %}
+    // Company Breakdown Chart (Admin Only)
+    const companyCtx = document.getElementById('companyChart').getContext('2d');
+    
+    const companyData = {
+        labels: ['Company A', 'Company B', 'Company C', 'Company D', 'Others'],
+        datasets: [{
+            data: [300, 250, 200, 150, 100],
+            backgroundColor: [
+                '#667eea',
+                '#764ba2',
+                '#f093fb',
+                '#f5576c',
+                '#4facfe'
+            ]
+        }]
+    };
+    
+    new Chart(companyCtx, {
+        type: 'doughnut',
+        data: companyData,
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                }
+            }
+        }
+    });
+    {% endif %}
+    
+    // Auto-refresh dashboard data every 5 minutes
+    setInterval(function() {
+        fetch('/dashboard/api/stats')
+            .then(response => response.json())
+            .then(data => {
+                // Update stats cards with new data
+                console.log('Dashboard refreshed', data);
+            })
+            .catch(error => console.error('Error refreshing dashboard:', error));
+    }, 5 * 60 * 1000); // 5 minutes
+});
+</script>
+
+<style>
+.activity-item {
+    padding-bottom: 1rem;
+    border-left: 2px solid #e9ecef;
+    position: relative;
+    margin-left: 1rem;
+}
+
+.activity-item:last-child {
+    border-left: none;
+}
+
+.activity-icon {
+    position: absolute;
+    left: -1.5rem;
+    top: 0;
+    width: 2rem;
+    height: 2rem;
+    background: white;
+    border: 2px solid #e9ecef;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.stats-card:hover {
+    transform: translateY(-2px);
+    transition: transform 0.2s;
+}
+
+.card {
+    transition: box-shadow 0.15s ease-in-out;
+}
+
+.card:hover {
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+}
+</style>
+{% endblock %}
