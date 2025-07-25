@@ -1,0 +1,415 @@
+<!-- templates/accounting/reports/trial_balance.html -->
+{% extends "base.html" %}
+
+{% block title %}Trial Balance Report{% endblock %}
+{% block page_title %}Trial Balance Report{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-balance-scale me-2"></i>
+                        Trial Balance Report
+                    </h5>
+                    <div>
+                        {% if trial_balance_data.totals.balanced %}
+                        <span class="badge bg-success fs-6">
+                            <i class="fas fa-check-circle me-1"></i>Balanced
+                        </span>
+                        {% else %}
+                        <span class="badge bg-danger fs-6">
+                            <i class="fas fa-exclamation-triangle me-1"></i>Unbalanced
+                        </span>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="mt-2">
+                    <small class="text-muted">
+                        As of {{ as_of_date.strftime('%B %d, %Y') }}
+                        • Generated on {{ trial_balance_data.generated_at.strftime('%B %d, %Y at %I:%M %p') }}
+                    </small>
+                </div>
+            </div>
+            <div class="card-body">
+                {% if trial_balance_data.trial_balance %}
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>Account Code</th>
+                                <th>Account Description</th>
+                                <th class="text-end">Debits</th>
+                                <th class="text-end">Credits</th>
+                                <th class="text-end">Balance</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% set ns = namespace(total_debit_balance=0, total_credit_balance=0) %}
+                            {% for account in trial_balance_data.trial_balance %}
+                            <tr class="{% if account.balance != 0 %}{% if account.balance > 0 %}table-light{% else %}table-info{% endif %}{% endif %}">
+                                <td>
+                                    <a href="{{ url_for('accounting.view_account_ledger', acct_code=account.acct_code) }}?as_of_date={{ as_of_date }}" 
+                                       class="text-decoration-none">
+                                        <strong>{{ account.acct_code }}</strong>
+                                    </a>
+                                </td>
+                                <td>{{ account.acct_description }}</td>
+                                <td class="text-end">
+                                    {% if account.total_debits > 0 %}
+                                        ${{ "%.2f"|format(account.total_debits) }}
+                                    {% else %}
+                                        -
+                                    {% endif %}
+                                </td>
+                                <td class="text-end">
+                                    {% if account.total_credits > 0 %}
+                                        ${{ "%.2f"|format(account.total_credits) }}
+                                    {% else %}
+                                        -
+                                    {% endif %}
+                                </td>
+                                <td class="text-end">
+                                    {% if account.balance != 0 %}
+                                        {% if account.balance > 0 %}
+                                            <strong class="text-success">${{ "%.2f"|format(account.balance) }}</strong>
+                                            {% set ns.total_debit_balance = ns.total_debit_balance + account.balance %}
+                                        {% else %}
+                                            <strong class="text-primary">(${{ "%.2f"|format(account.balance|abs) }})</strong>
+                                            {% set ns.total_credit_balance = ns.total_credit_balance + account.balance|abs %}
+                                        {% endif %}
+                                    {% else %}
+                                        <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                        <tfoot class="table-dark">
+                            <tr>
+                                <th colspan="2"><strong>TOTALS</strong></th>
+                                <th class="text-end">
+                                    <strong>${{ "%.2f"|format(trial_balance_data.totals.total_debits) }}</strong>
+                                </th>
+                                <th class="text-end">
+                                    <strong>${{ "%.2f"|format(trial_balance_data.totals.total_credits) }}</strong>
+                                </th>
+                                <th class="text-end">
+                                    {% if trial_balance_data.totals.difference < 0.01 %}
+                                        <strong class="text-success">$0.00</strong>
+                                    {% else %}
+                                        <strong class="text-danger">${{ "%.2f"|format(trial_balance_data.totals.difference) }}</strong>
+                                    {% endif %}
+                                </th>
+                            </tr>
+                            {% if not trial_balance_data.totals.balanced %}
+                            <tr class="table-warning">
+                                <th colspan="4"><strong>DIFFERENCE (SHOULD BE ZERO)</strong></th>
+                                <th class="text-end">
+                                    <strong class="text-danger">${{ "%.2f"|format(trial_balance_data.totals.difference) }}</strong>
+                                </th>
+                            </tr>
+                            {% endif %}
+                        </tfoot>
+                    </table>
+                </div>
+                
+                <!-- Balance Summary -->
+                <div class="row mt-4">
+                    <div class="col-md-6">
+                        <div class="card bg-light">
+                            <div class="card-body text-center">
+                                <h6 class="card-title text-success">Total Debit Balances</h6>
+                                <h4 class="text-success">${{ "%.2f"|format(ns.total_debit_balance) }}</h4>
+                                <small class="text-muted">Assets, Expenses</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card bg-light">
+                            <div class="card-body text-center">
+                                <h6 class="card-title text-primary">Total Credit Balances</h6>
+                                <h4 class="text-primary">${{ "%.2f"|format(ns.total_credit_balance) }}</h4>
+                                <small class="text-muted">Liabilities, Equity, Revenue</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                {% else %}
+                <div class="text-center py-5">
+                    <i class="fas fa-balance-scale fa-3x text-muted mb-3"></i>
+                    <h5 class="text-muted">No Account Activity</h5>
+                    <p class="text-muted">No transactions found for the selected date range.</p>
+                    <a href="{{ url_for('accounting.create_voucher_payable') }}" class="btn btn-primary">
+                        <i class="fas fa-plus me-2"></i>Create First Transaction
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <!-- Sidebar -->
+    <div class="col-md-4">
+        <!-- Date Selection -->
+        <div class="card">
+            <div class="card-header">
+                <h6 class="card-title mb-0">Report Options</h6>
+            </div>
+            <div class="card-body">
+                <form method="GET">
+                    <div class="mb-3">
+                        <label for="as_of_date" class="form-label">As of Date</label>
+                        <input type="date" class="form-control" id="as_of_date" name="as_of_date" 
+                               value="{{ as_of_date.isoformat() }}" onchange="this.form.submit()">
+                        <div class="form-text">Show balances as of this date</div>
+                    </div>
+                </form>
+                
+                <div class="d-grid gap-2">
+                    <button class="btn btn-outline-info" onclick="window.print()">
+                        <i class="fas fa-print me-2"></i>Print Report
+                    </button>
+                    <button class="btn btn-outline-success" onclick="exportToExcel()">
+                        <i class="fas fa-file-excel me-2"></i>Export to Excel
+                    </button>
+                    <a href="{{ url_for('accounting.reports') }}" class="btn btn-outline-secondary">
+                        <i class="fas fa-arrow-left me-2"></i>Back to Reports
+                    </a>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Balance Check -->
+        <div class="card mt-3">
+            <div class="card-header">
+                <h6 class="card-title mb-0">Balance Check</h6>
+            </div>
+            <div class="card-body">
+                {% if trial_balance_data.totals.balanced %}
+                <div class="alert alert-success">
+                    <i class="fas fa-check-circle me-2"></i>
+                    <strong>Trial Balance is Balanced!</strong>
+                    <br>Total Debits = Total Credits
+                </div>
+                {% else %}
+                <div class="alert alert-danger">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    <strong>Trial Balance is NOT Balanced!</strong>
+                    <br>Difference: ${{ "%.2f"|format(trial_balance_data.totals.difference) }}
+                </div>
+                {% endif %}
+                
+                <dl class="row mb-0">
+                    <dt class="col-6">Total Debits:</dt>
+                    <dd class="col-6 text-end">${{ "%.2f"|format(trial_balance_data.totals.total_debits) }}</dd>
+                    
+                    <dt class="col-6">Total Credits:</dt>
+                    <dd class="col-6 text-end">${{ "%.2f"|format(trial_balance_data.totals.total_credits) }}</dd>
+                    
+                    <dt class="col-6 border-top pt-2">Difference:</dt>
+                    <dd class="col-6 text-end border-top pt-2">
+                        <strong class="{% if trial_balance_data.totals.balanced %}text-success{% else %}text-danger{% endif %}">
+                            ${{ "%.2f"|format(trial_balance_data.totals.difference) }}
+                        </strong>
+                    </dd>
+                </dl>
+            </div>
+        </div>
+        
+        <!-- Account Summary -->
+        <div class="card mt-3">
+            <div class="card-header">
+                <h6 class="card-title mb-0">Account Summary</h6>
+            </div>
+            <div class="card-body">
+                <p class="small mb-2">
+                    <strong>{{ trial_balance_data.trial_balance|length }}</strong> accounts with activity
+                </p>
+                
+                {% set accounts_with_balance = trial_balance_data.trial_balance|selectattr('balance', '!=', 0)|list %}
+                <p class="small mb-2">
+                    <strong>{{ accounts_with_balance|length }}</strong> accounts with non-zero balance
+                </p>
+                
+                {% set debit_accounts = trial_balance_data.trial_balance|selectattr('balance', '>', 0)|list %}
+                <p class="small mb-2">
+                    <span class="text-success">{{ debit_accounts|length }} debit balances</span>
+                </p>
+                
+                {% set credit_accounts = trial_balance_data.trial_balance|selectattr('balance', '<', 0)|list %}
+                <p class="small mb-0">
+                    <span class="text-primary">{{ credit_accounts|length }} credit balances</span>
+                </p>
+            </div>
+        </div>
+        
+        <!-- Quick Links -->
+        <div class="card mt-3">
+            <div class="card-header">
+                <h6 class="card-title mb-0">Related Reports</h6>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <a href="{{ url_for('accounting.list_accounts') }}" class="btn btn-outline-primary btn-sm">
+                        <i class="fas fa-chart-pie me-2"></i>Chart of Accounts
+                    </a>
+                    <a href="{{ url_for('accounting.list_vouchers_payable') }}" class="btn btn-outline-primary btn-sm">
+                        <i class="fas fa-file-invoice me-2"></i>Vouchers Payable
+                    </a>
+                    <a href="{{ url_for('accounting.list_check_vouchers') }}" class="btn btn-outline-success btn-sm">
+                        <i class="fas fa-check me-2"></i>Check Vouchers
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function exportToExcel() {
+    // Create a simple CSV export
+    let csv = 'Account Code,Account Description,Debits,Credits,Balance\n';
+    
+    const table = document.querySelector('table tbody');
+    const rows = table.querySelectorAll('tr');
+    
+    rows.forEach(row => {
+        const cells = row.querySelectorAll('td');
+        if (cells.length >= 5) {
+            const code = cells[0].textContent.trim();
+            const description = cells[1].textContent.trim();
+            const debits = cells[2].textContent.trim().replace('$', '').replace(',', '') || '0';
+            const credits = cells[3].textContent.trim().replace('$', '').replace(',', '') || '0';
+            const balance = cells[4].textContent.trim().replace('$', '').replace(',', '').replace('(', '-').replace(')', '') || '0';
+            
+            csv += `"${code}","${description}",${debits},${credits},${balance}\n`;
+        }
+    });
+    
+    // Add totals
+    csv += `"","TOTALS",{{ trial_balance_data.totals.total_debits }},{{ trial_balance_data.totals.total_credits }},{{ trial_balance_data.totals.difference }}\n`;
+    
+    // Download CSV
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `trial_balance_{{ as_of_date.strftime('%Y_%m_%d') }}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+}
+
+// Auto-refresh every 10 minutes
+setInterval(function() {
+    location.reload();
+}, 10 * 60 * 1000);
+
+// Keyboard shortcuts
+document.addEventListener('keydown', function(e) {
+    if (e.ctrlKey || e.metaKey) {
+        switch(e.key) {
+            case 'p':
+                e.preventDefault();
+                window.print();
+                break;
+            case 'e':
+                e.preventDefault();
+                exportToExcel();
+                break;
+            case 'r':
+                e.preventDefault();
+                location.reload();
+                break;
+        }
+    }
+});
+
+// Highlight unbalanced rows
+document.addEventListener('DOMContentLoaded', function() {
+    {% if not trial_balance_data.totals.balanced %}
+    // Add visual indicators for unbalanced trial balance
+    const header = document.querySelector('.card-header');
+    header.style.background = 'linear-gradient(135deg, #dc3545, #fd7e14)';
+    header.style.color = 'white';
+    {% endif %}
+});
+</script>
+
+<style>
+@media print {
+    .col-md-4, .btn, .form-control, .alert {
+        display: none !important;
+    }
+    
+    .col-md-8 {
+        width: 100% !important;
+        max-width: 100% !important;
+    }
+    
+    .card {
+        border: none !important;
+        box-shadow: none !important;
+    }
+    
+    .table {
+        font-size: 12px;
+    }
+    
+    .card-header {
+        background: none !important;
+        border: none !important;
+        color: black !important;
+    }
+    
+    .badge {
+        border: 1px solid #000 !important;
+        color: black !important;
+        background: white !important;
+    }
+}
+
+.table-responsive {
+    border-radius: 0.5rem;
+}
+
+.table th {
+    border-top: none;
+}
+
+.table-dark th {
+    background-color: #495057 !important;
+    color: white !important;
+}
+
+.table-hover tbody tr:hover {
+    background-color: rgba(102, 126, 234, 0.1) !important;
+}
+
+.badge.fs-6 {
+    font-size: 0.9rem !important;
+}
+
+.text-decoration-none:hover {
+    text-decoration: underline !important;
+}
+
+/* Zebra striping for better readability */
+.table tbody tr:nth-of-type(odd) {
+    background-color: rgba(0, 0, 0, 0.02);
+}
+
+/* Highlight rows with significant balances */
+.table tbody tr:hover .text-success,
+.table tbody tr:hover .text-primary {
+    font-weight: bold;
+}
+</style>
+{% endblock %}

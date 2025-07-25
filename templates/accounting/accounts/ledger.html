@@ -1,0 +1,506 @@
+<!-- templates/accounting/accounts/ledger.html -->
+{% extends "base.html" %}
+
+{% block title %}Account Ledger - {{ ledger_data.account.acct_code }}{% endblock %}
+{% block page_title %}Account Ledger{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8">
+        <!-- Account Header -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-book me-2"></i>
+                        Account Ledger: {{ ledger_data.account.acct_code }}
+                    </h5>
+                    <span class="badge {{ ledger_data.account.acct_type|account_type_badge }} fs-6">
+                        {{ ledger_data.account.acct_type }}
+                    </span>
+                </div>
+                <div class="mt-2">
+                    <h6 class="text-muted mb-0">{{ ledger_data.account.acct_description }}</h6>
+                    {% if filters.start_date or filters.end_date %}
+                    <small class="text-muted">
+                        Period: {{ filters.start_date or 'Beginning' }} to {{ filters.end_date or 'Current' }}
+                    </small>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <!-- Transactions Table -->
+        <div class="card">
+            <div class="card-header">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h6 class="card-title mb-0">Transaction History</h6>
+                    <div>
+                        <button class="btn btn-sm btn-outline-info" onclick="window.print()">
+                            <i class="fas fa-print me-1"></i>Print
+                        </button>
+                        <button class="btn btn-sm btn-outline-success" onclick="exportToCSV()">
+                            <i class="fas fa-file-csv me-1"></i>Export
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div class="card-body">
+                {% if ledger_data.transactions %}
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover" id="ledgerTable">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Date</th>
+                                <th>Transaction</th>
+                                <th>Payee/Description</th>
+                                <th class="text-end">Debit</th>
+                                <th class="text-end">Credit</th>
+                                <th class="text-end">Balance</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% set ns = namespace(running_balance=0) %}
+                            {% for transaction in ledger_data.transactions %}
+                            {% if transaction.acct_type == 'D' %}
+                                {% set ns.running_balance = ns.running_balance + transaction.amount %}
+                            {% else %}
+                                {% set ns.running_balance = ns.running_balance - transaction.amount %}
+                            {% endif %}
+                            <tr>
+                                <td>
+                                    <small>{{ transaction.date }}</small>
+                                </td>
+                                <td>
+                                    <a href="{{ url_for('accounting.view_transaction', number=transaction.number) }}" 
+                                       class="text-decoration-none">
+                                        <strong>{{ transaction.number }}</strong>
+                                    </a>
+                                    <br>
+                                    <span class="badge bg-{{ 'primary' if transaction.type == 'VP' else 'success' }}">
+                                        {{ transaction.type }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <strong>{{ transaction.payee or transaction.ledger_description }}</strong>
+                                    {% if transaction.ledger_description and transaction.payee != transaction.ledger_description %}
+                                        <br><small class="text-muted">{{ transaction.ledger_description }}</small>
+                                    {% endif %}
+                                </td>
+                                <td class="text-end">
+                                    {% if transaction.acct_type == 'D' %}
+                                        <strong class="text-success">${{ "%.2f"|format(transaction.amount) }}</strong>
+                                    {% else %}
+                                        <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-end">
+                                    {% if transaction.acct_type == 'C' %}
+                                        <strong class="text-danger">${{ "%.2f"|format(transaction.amount) }}</strong>
+                                    {% else %}
+                                        <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-end">
+                                    <strong class="{{ 'text-success' if ns.running_balance >= 0 else 'text-danger' }}">
+                                        {% if ns.running_balance >= 0 %}
+                                            ${{ "%.2f"|format(ns.running_balance) }}
+                                        {% else %}
+                                            (${{ "%.2f"|format(ns.running_balance|abs) }})
+                                        {% endif %}
+                                    </strong>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                        <tfoot class="table-light">
+                            <tr>
+                                <th colspan="3"><strong>Account Balance:</strong></th>
+                                <th class="text-end">
+                                    <strong>${{ "%.2f"|format(ledger_data.balance.total_debits) }}</strong>
+                                </th>
+                                <th class="text-end">
+                                    <strong>${{ "%.2f"|format(ledger_data.balance.total_credits) }}</strong>
+                                </th>
+                                <th class="text-end">
+                                    <strong class="{{ 'text-success' if ledger_data.balance.balance >= 0 else 'text-danger' }}">
+                                        {% if ledger_data.balance.balance >= 0 %}
+                                            ${{ "%.2f"|format(ledger_data.balance.balance) }}
+                                        {% else %}
+                                            (${{ "%.2f"|format(ledger_data.balance.balance|abs) }})
+                                        {% endif %}
+                                    </strong>
+                                </th>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+                
+                <!-- Pagination placeholder -->
+                {% if ledger_data.transactions|length >= 100 %}
+                <div class="text-center mt-3">
+                    <small class="text-muted">
+                        Showing latest 100 transactions. Use date filters to narrow results.
+                    </small>
+                </div>
+                {% endif %}
+                
+                {% else %}
+                <!-- Empty State -->
+                <div class="text-center py-5">
+                    <i class="fas fa-book-open fa-3x text-muted mb-3"></i>
+                    <h5 class="text-muted">No Transactions Found</h5>
+                    <p class="text-muted">
+                        {% if filters.start_date or filters.end_date %}
+                            No transactions found for the selected date range.
+                        {% else %}
+                            This account has no transaction history yet.
+                        {% endif %}
+                    </p>
+                    {% if not (filters.start_date or filters.end_date) %}
+                    <a href="{{ url_for('accounting.create_voucher_payable') }}" class="btn btn-primary">
+                        <i class="fas fa-plus me-2"></i>Create First Transaction
+                    </a>
+                    {% endif %}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <!-- Sidebar -->
+    <div class="col-md-4">
+        <!-- Date Range Filter -->
+        <div class="card">
+            <div class="card-header">
+                <h6 class="card-title mb-0">Date Range Filter</h6>
+            </div>
+            <div class="card-body">
+                <form method="GET">
+                    <div class="mb-3">
+                        <label for="start_date" class="form-label">Start Date</label>
+                        <input type="date" class="form-control" id="start_date" name="start_date" 
+                               value="{{ filters.start_date }}">
+                    </div>
+                    <div class="mb-3">
+                        <label for="end_date" class="form-label">End Date</label>
+                        <input type="date" class="form-control" id="end_date" name="end_date" 
+                               value="{{ filters.end_date }}">
+                    </div>
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-filter me-2"></i>Apply Filter
+                        </button>
+                        <a href="{{ url_for('accounting.view_account_ledger', acct_code=ledger_data.account.acct_code) }}" 
+                           class="btn btn-outline-secondary">
+                            <i class="fas fa-times me-2"></i>Clear Filter
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+        
+        <!-- Account Balance Summary -->
+        <div class="card mt-3">
+            <div class="card-header">
+                <h6 class="card-title mb-0">Balance Summary</h6>
+            </div>
+            <div class="card-body">
+                <dl class="row mb-0">
+                    <dt class="col-6">Total Debits:</dt>
+                    <dd class="col-6 text-end text-success">
+                        ${{ "%.2f"|format(ledger_data.balance.total_debits) }}
+                    </dd>
+                    
+                    <dt class="col-6">Total Credits:</dt>
+                    <dd class="col-6 text-end text-danger">
+                        ${{ "%.2f"|format(ledger_data.balance.total_credits) }}
+                    </dd>
+                    
+                    <dt class="col-6 border-top pt-2">Net Balance:</dt>
+                    <dd class="col-6 text-end border-top pt-2">
+                        <strong class="{{ 'text-success' if ledger_data.balance.balance >= 0 else 'text-danger' }}">
+                            {% if ledger_data.balance.balance >= 0 %}
+                                ${{ "%.2f"|format(ledger_data.balance.balance) }}
+                            {% else %}
+                                (${{ "%.2f"|format(ledger_data.balance.balance|abs) }})
+                            {% endif %}
+                        </strong>
+                    </dd>
+                </dl>
+                
+                <div class="mt-3">
+                    <small class="text-muted">
+                        As of {{ ledger_data.balance.as_of_date }}
+                    </small>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Account Information -->
+        <div class="card mt-3">
+            <div class="card-header">
+                <h6 class="card-title mb-0">Account Information</h6>
+            </div>
+            <div class="card-body">
+                <dl class="row mb-0">
+                    <dt class="col-6">Code:</dt>
+                    <dd class="col-6">{{ ledger_data.account.acct_code }}</dd>
+                    
+                    <dt class="col-6">Type:</dt>
+                    <dd class="col-6">
+                        <span class="badge {{ ledger_data.account.acct_type|account_type_badge }}">
+                            {{ ledger_data.account.acct_type }}
+                        </span>
+                    </dd>
+                    
+                    <dt class="col-6">Prefix:</dt>
+                    <dd class="col-6">{{ ledger_data.account.acct_prefix or 'None' }}</dd>
+                    
+                    <dt class="col-6">Status:</dt>
+                    <dd class="col-6">
+                        <span class="badge bg-{{ 'success' if ledger_data.account.is_active else 'secondary' }}">
+                            {{ 'Active' if ledger_data.account.is_active else 'Inactive' }}
+                        </span>
+                    </dd>
+                </dl>
+            </div>
+        </div>
+        
+        <!-- Quick Actions -->
+        <div class="card mt-3">
+            <div class="card-header">
+                <h6 class="card-title mb-0">Quick Actions</h6>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <a href="{{ url_for('accounting.create_voucher_payable') }}" class="btn btn-outline-primary">
+                        <i class="fas fa-plus me-2"></i>New Voucher Payable
+                    </a>
+                    <a href="{{ url_for('accounting.create_check_voucher') }}" class="btn btn-outline-success">
+                        <i class="fas fa-plus me-2"></i>New Check Voucher
+                    </a>
+                    <a href="{{ url_for('accounting.trial_balance') }}" class="btn btn-outline-info">
+                        <i class="fas fa-balance-scale me-2"></i>Trial Balance
+                    </a>
+                    <a href="{{ url_for('accounting.list_accounts') }}" class="btn btn-outline-secondary">
+                        <i class="fas fa-arrow-left me-2"></i>Back to Accounts
+                    </a>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Transaction Types Legend -->
+        <div class="card mt-3">
+            <div class="card-header">
+                <h6 class="card-title mb-0">Transaction Types</h6>
+            </div>
+            <div class="card-body">
+                <div class="small">
+                    <div class="d-flex align-items-center mb-2">
+                        <span class="badge bg-primary me-2">VP</span>
+                        <span>Voucher Payable - Payment obligation</span>
+                    </div>
+                    <div class="d-flex align-items-center mb-2">
+                        <span class="badge bg-success me-2">CV</span>
+                        <span>Check Voucher - Actual payment</span>
+                    </div>
+                    <hr class="my-2">
+                    <div class="d-flex align-items-center mb-2">
+                        <span class="text-success me-2">●</span>
+                        <span>Debit increases balance</span>
+                    </div>
+                    <div class="d-flex align-items-center">
+                        <span class="text-danger me-2">●</span>
+                        <span>Credit decreases balance</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function exportToCSV() {
+    const table = document.getElementById('ledgerTable');
+    let csv = 'Date,Transaction,Type,Payee/Description,Debit,Credit,Balance\n';
+    
+    const rows = table.querySelectorAll('tbody tr');
+    rows.forEach(row => {
+        const cells = row.querySelectorAll('td');
+        if (cells.length >= 6) {
+            const date = cells[0].textContent.trim();
+            const transaction = cells[1].querySelector('strong').textContent.trim();
+            const type = cells[1].querySelector('.badge').textContent.trim();
+            const payee = cells[2].querySelector('strong').textContent.trim();
+            const debit = cells[3].textContent.trim().replace('$', '').replace(',', '') || '0';
+            const credit = cells[4].textContent.trim().replace('$', '').replace(',', '') || '0';
+            const balance = cells[5].textContent.trim().replace('$', '').replace(',', '').replace('(', '-').replace(')', '') || '0';
+            
+            csv += `"${date}","${transaction}","${type}","${payee}",${debit},${credit},${balance}\n`;
+        }
+    });
+    
+    // Add summary
+    const totalDebits = '{{ ledger_data.balance.total_debits }}';
+    const totalCredits = '{{ ledger_data.balance.total_credits }}';
+    const finalBalance = '{{ ledger_data.balance.balance }}';
+    
+    csv += `\n"","","","TOTALS",${totalDebits},${totalCredits},${finalBalance}\n`;
+    
+    // Download CSV
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `account_ledger_{{ ledger_data.account.acct_code }}_{{ date.today().strftime('%Y_%m_%d') }}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+}
+
+// Auto-scroll to bottom of table to show most recent transactions
+document.addEventListener('DOMContentLoaded', function() {
+    const table = document.getElementById('ledgerTable');
+    if (table && table.querySelectorAll('tbody tr').length > 10) {
+        // Don't auto-scroll for small tables
+        // table.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    }
+});
+
+// Keyboard shortcuts
+document.addEventListener('keydown', function(e) {
+    if (e.ctrlKey || e.metaKey) {
+        switch(e.key) {
+            case 'p':
+                e.preventDefault();
+                window.print();
+                break;
+            case 'e':
+                e.preventDefault();
+                exportToCSV();
+                break;
+            case 'n':
+                e.preventDefault();
+                window.location.href = "{{ url_for('accounting.create_voucher_payable') }}";
+                break;
+        }
+    }
+});
+
+// Highlight row on hover for better readability
+document.addEventListener('DOMContentLoaded', function() {
+    const rows = document.querySelectorAll('#ledgerTable tbody tr');
+    rows.forEach(row => {
+        row.addEventListener('mouseenter', function() {
+            this.style.backgroundColor = 'rgba(102, 126, 234, 0.1)';
+        });
+        row.addEventListener('mouseleave', function() {
+            this.style.backgroundColor = '';
+        });
+    });
+});
+
+// Show balance trend analysis
+function showBalanceTrend() {
+    // This could be enhanced to show a chart of balance over time
+    alert('Balance trend analysis feature coming soon!');
+}
+</script>
+
+<style>
+@media print {
+    .col-md-4, .btn, .card-header .btn, .form-control {
+        display: none !important;
+    }
+    
+    .col-md-8 {
+        width: 100% !important;
+        max-width: 100% !important;
+    }
+    
+    .card {
+        border: none !important;
+        box-shadow: none !important;
+    }
+    
+    .table {
+        font-size: 11px;
+    }
+    
+    .badge {
+        border: 1px solid #000 !important;
+        color: black !important;
+        background: white !important;
+    }
+}
+
+.table-responsive {
+    border-radius: 0.5rem;
+}
+
+.table th {
+    border-top: none;
+}
+
+.table-hover tbody tr:hover {
+    background-color: rgba(102, 126, 234, 0.1) !important;
+}
+
+.text-decoration-none:hover {
+    text-decoration: underline !important;
+}
+
+.badge {
+    font-size: 0.75em;
+}
+
+/* Custom scrollbar for table */
+.table-responsive::-webkit-scrollbar {
+    height: 8px;
+}
+
+.table-responsive::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 4px;
+}
+
+.table-responsive::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 4px;
+}
+
+.table-responsive::-webkit-scrollbar-thumb:hover {
+    background: #555;
+}
+
+/* Alternating row colors for better readability */
+.table tbody tr:nth-of-type(odd) {
+    background-color: rgba(0, 0, 0, 0.02);
+}
+
+/* Highlight positive and negative balances */
+.text-success {
+    color: #198754 !important;
+}
+
+.text-danger {
+    color: #dc3545 !important;
+}
+
+/* Responsive table adjustments */
+@media (max-width: 768px) {
+    .table-responsive {
+        font-size: 0.875rem;
+    }
+    
+    .table th,
+    .table td {
+        padding: 0.5rem 0.25rem;
+    }
+}
+</style>
+{% endblock %}

@@ -1,0 +1,440 @@
+<!-- templates/accounting/accounts/list.html -->
+{% extends "base.html" %}
+
+{% block title %}Chart of Accounts{% endblock %}
+{% block page_title %}Chart of Accounts{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2><i class="fas fa-chart-pie me-2"></i>Chart of Accounts</h2>
+        <p class="text-muted mb-0">Manage your account structure and view account balances</p>
+    </div>
+    <div>
+        <a href="{{ url_for('accounting.trial_balance') }}" class="btn btn-outline-info me-2">
+            <i class="fas fa-balance-scale me-2"></i>Trial Balance
+        </a>
+        <a href="{{ url_for('accounting.create_account') }}" class="btn btn-primary">
+            <i class="fas fa-plus me-2"></i>New Account
+        </a>
+    </div>
+</div>
+
+<!-- Statistics Cards -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="stats-card">
+            <h3 class="text-primary">{{ stats.total_accounts or 0 }}</h3>
+            <p class="mb-0">Total Accounts</p>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stats-card">
+            <h3 class="text-success">{{ stats.by_type.Company or 0 }}</h3>
+            <p class="mb-0">Company Accounts</p>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stats-card">
+            <h3 class="text-info">{{ stats.by_type.Customer or 0 }}</h3>
+            <p class="mb-0">Customer Accounts</p>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stats-card">
+            <h3 class="text-warning">{{ stats.by_type.Employee or 0 }}</h3>
+            <p class="mb-0">Employee Accounts</p>
+        </div>
+    </div>
+</div>
+
+<!-- Search and Filter -->
+<div class="card mb-4">
+    <div class="card-body">
+        <div class="row g-3">
+            <div class="col-md-6">
+                <input type="text" class="form-control" id="accountSearch" 
+                       placeholder="Search accounts by code or description...">
+            </div>
+            <div class="col-md-3">
+                <select class="form-select" id="typeFilter">
+                    <option value="">All Types</option>
+                    <option value="Company">Company</option>
+                    <option value="Customer">Customer</option>
+                    <option value="Employee">Employee</option>
+                    <option value="Subsidiary">Subsidiary</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <select class="form-select" id="prefixFilter">
+                    <option value="">All Prefixes</option>
+                    {% for prefix in stats.by_prefix.keys() %}
+                    <option value="{{ prefix }}">{{ prefix }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Accounts by Category -->
+{% if accounts_by_category %}
+{% for category, accounts in accounts_by_category.items() %}
+<div class="card mb-4" data-category="{{ category }}">
+    <div class="card-header">
+        <div class="d-flex justify-content-between align-items-center">
+            <h5 class="card-title mb-0">
+                <i class="fas fa-{{ 'building' if category == 'Company' else 'users' if category == 'Customer' else 'user-tie' if category == 'Employee' else 'sitemap' }} me-2"></i>
+                {{ category }} Accounts
+                <span class="badge {{ category|account_type_badge }} ms-2">{{ accounts|length }}</span>
+            </h5>
+            <button class="btn btn-sm btn-outline-secondary" type="button" 
+                    data-bs-toggle="collapse" data-bs-target="#collapse{{ category }}" 
+                    aria-expanded="true">
+                <i class="fas fa-chevron-down"></i>
+            </button>
+        </div>
+    </div>
+    <div class="collapse show" id="collapse{{ category }}">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover accounts-table">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Account Code</th>
+                            <th>Description</th>
+                            <th>Prefix</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for account in accounts %}
+                        <tr class="account-row" 
+                            data-code="{{ account.acct_code|lower }}" 
+                            data-description="{{ account.acct_description|lower }}"
+                            data-type="{{ account.acct_type }}"
+                            data-prefix="{{ account.acct_prefix or '' }}">
+                            <td>
+                                <a href="{{ url_for('accounting.view_account_ledger', acct_code=account.acct_code) }}" 
+                                   class="text-decoration-none">
+                                    <strong class="text-primary">{{ account.acct_code }}</strong>
+                                </a>
+                            </td>
+                            <td>
+                                <strong>{{ account.acct_description }}</strong>
+                            </td>
+                            <td>
+                                {% if account.acct_prefix %}
+                                    <span class="badge bg-light text-dark">{{ account.acct_prefix }}</span>
+                                {% else %}
+                                    <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <span class="badge bg-{{ 'success' if account.is_active else 'secondary' }}">
+                                    {{ 'Active' if account.is_active else 'Inactive' }}
+                                </span>
+                            </td>
+                            <td>
+                                <div class="btn-group" role="group">
+                                    <a href="{{ url_for('accounting.view_account_ledger', acct_code=account.acct_code) }}" 
+                                       class="btn btn-sm btn-outline-primary" title="View Ledger">
+                                        <i class="fas fa-book"></i>
+                                    </a>
+                                    <button class="btn btn-sm btn-outline-info" 
+                                            onclick="showAccountDetails('{{ account.acct_code }}')" title="Details">
+                                        <i class="fas fa-info-circle"></i>
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-warning" 
+                                            onclick="editAccount('{{ account.acct_code }}')" title="Edit">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endfor %}
+
+{% else %}
+<!-- Empty State -->
+<div class="card">
+    <div class="card-body text-center py-5">
+        <i class="fas fa-chart-pie fa-3x text-muted mb-3"></i>
+        <h5 class="text-muted">No Accounts Found</h5>
+        <p class="text-muted">Start by creating your chart of accounts structure.</p>
+        <a href="{{ url_for('accounting.create_account') }}" class="btn btn-primary">
+            <i class="fas fa-plus me-2"></i>Create First Account
+        </a>
+    </div>
+</div>
+{% endif %}
+
+<!-- Account Balance Summary -->
+{% if accounts_by_category %}
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h6 class="card-title mb-0">
+                    <i class="fas fa-calculator me-2"></i>Account Summary
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="row text-center">
+                    {% for category, accounts in accounts_by_category.items() %}
+                    <div class="col-md-3 col-6 mb-3">
+                        <div class="border-end">
+                            <h6 class="text-{{ 'primary' if category == 'Company' else 'success' if category == 'Customer' else 'info' if category == 'Employee' else 'warning' }}">
+                                {{ accounts|length }}
+                            </h6>
+                            <small class="text-muted">{{ category }}</small>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                
+                <div class="text-center mt-3">
+                    <small class="text-muted">
+                        <i class="fas fa-info-circle me-1"></i>
+                        Account balances are calculated from transaction history. 
+                        <a href="{{ url_for('accounting.trial_balance') }}" class="text-decoration-none">View Trial Balance</a> 
+                        for detailed balance information.
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Account Details Modal -->
+<div class="modal fade" id="accountDetailsModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Account Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="accountDetailsContent">
+                <!-- Content will be loaded dynamically -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" id="viewLedgerBtn">
+                    <i class="fas fa-book me-2"></i>View Ledger
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Search and filter functionality
+document.addEventListener('DOMContentLoaded', function() {
+    const searchInput = document.getElementById('accountSearch');
+    const typeFilter = document.getElementById('typeFilter');
+    const prefixFilter = document.getElementById('prefixFilter');
+    
+    function filterAccounts() {
+        const searchTerm = searchInput.value.toLowerCase();
+        const selectedType = typeFilter.value;
+        const selectedPrefix = prefixFilter.value;
+        
+        document.querySelectorAll('.account-row').forEach(row => {
+            const code = row.dataset.code;
+            const description = row.dataset.description;
+            const type = row.dataset.type;
+            const prefix = row.dataset.prefix;
+            
+            let visible = true;
+            
+            // Search filter
+            if (searchTerm && !code.includes(searchTerm) && !description.includes(searchTerm)) {
+                visible = false;
+            }
+            
+            // Type filter
+            if (selectedType && type !== selectedType) {
+                visible = false;
+            }
+            
+            // Prefix filter
+            if (selectedPrefix && prefix !== selectedPrefix) {
+                visible = false;
+            }
+            
+            row.style.display = visible ? '' : 'none';
+        });
+        
+        // Hide/show categories if all rows are hidden
+        document.querySelectorAll('[data-category]').forEach(category => {
+            const visibleRows = category.querySelectorAll('.account-row:not([style*="display: none"])');
+            const categoryHeader = category.querySelector('.card-header');
+            
+            if (visibleRows.length === 0) {
+                category.style.display = 'none';
+            } else {
+                category.style.display = '';
+                // Update count badge
+                const badge = categoryHeader.querySelector('.badge');
+                if (badge) {
+                    badge.textContent = visibleRows.length;
+                }
+            }
+        });
+    }
+    
+    searchInput.addEventListener('input', filterAccounts);
+    typeFilter.addEventListener('change', filterAccounts);
+    prefixFilter.addEventListener('change', filterAccounts);
+});
+
+function showAccountDetails(accountCode) {
+    // Fetch account details via API
+    fetch(`/accounting/api/accounts/search?q=${accountCode}`)
+        .then(response => response.json())
+        .then(accounts => {
+            const account = accounts.find(acc => acc.acct_code === accountCode);
+            if (account) {
+                document.getElementById('accountDetailsContent').innerHTML = `
+                    <div class="row">
+                        <div class="col-md-6">
+                            <dl class="row">
+                                <dt class="col-sm-4">Code:</dt>
+                                <dd class="col-sm-8"><strong>${account.acct_code}</strong></dd>
+                                
+                                <dt class="col-sm-4">Description:</dt>
+                                <dd class="col-sm-8">${account.acct_description}</dd>
+                                
+                                <dt class="col-sm-4">Type:</dt>
+                                <dd class="col-sm-8">
+                                    <span class="badge ${account.acct_type === 'Company' ? 'bg-primary' : account.acct_type === 'Customer' ? 'bg-success' : account.acct_type === 'Employee' ? 'bg-info' : 'bg-warning'}">
+                                        ${account.acct_type}
+                                    </span>
+                                </dd>
+                                
+                                <dt class="col-sm-4">Prefix:</dt>
+                                <dd class="col-sm-8">${account.acct_prefix || 'None'}</dd>
+                            </dl>
+                        </div>
+                        <div class="col-md-6">
+                            <h6>Recent Activity</h6>
+                            <div class="alert alert-info">
+                                <i class="fas fa-info-circle me-2"></i>
+                                View the account ledger for detailed transaction history.
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                document.getElementById('viewLedgerBtn').onclick = function() {
+                    window.location.href = `/accounting/account/${accountCode}`;
+                };
+                
+                new bootstrap.Modal(document.getElementById('accountDetailsModal')).show();
+            }
+        })
+        .catch(error => {
+            console.error('Error fetching account details:', error);
+        });
+}
+
+function editAccount(accountCode) {
+    // Redirect to edit page (when implemented)
+    alert(`Edit functionality for account ${accountCode} will be implemented soon.`);
+}
+
+// Keyboard shortcuts
+document.addEventListener('keydown', function(e) {
+    if (e.ctrlKey || e.metaKey) {
+        switch(e.key) {
+            case 'n':
+                e.preventDefault();
+                window.location.href = "{{ url_for('accounting.create_account') }}";
+                break;
+            case 'f':
+                e.preventDefault();
+                document.getElementById('accountSearch').focus();
+                break;
+            case 't':
+                e.preventDefault();
+                window.location.href = "{{ url_for('accounting.trial_balance') }}";
+                break;
+        }
+    }
+});
+
+// Auto-refresh account information every 10 minutes
+setInterval(function() {
+    // Only refresh if no modals are open
+    if (!document.querySelector('.modal.show')) {
+        console.log('Auto-refreshing account information...');
+        // In a real application, you might want to refresh specific data
+    }
+}, 10 * 60 * 1000);
+
+// Collapse/expand all categories
+function toggleAllCategories(expand = true) {
+    document.querySelectorAll('[id^="collapse"]').forEach(collapse => {
+        if (expand) {
+            collapse.classList.add('show');
+        } else {
+            collapse.classList.remove('show');
+        }
+    });
+}
+
+// Add expand/collapse all buttons functionality
+document.addEventListener('DOMContentLoaded', function() {
+    // You can add buttons to the interface for expand/collapse all
+    const style = document.createElement('style');
+    style.textContent = `
+        .account-row:hover {
+            background-color: rgba(102, 126, 234, 0.1);
+        }
+        
+        .table th {
+            border-top: none;
+        }
+        
+        .stats-card {
+            border: 1px solid #dee2e6;
+            transition: all 0.2s ease;
+        }
+        
+        .stats-card:hover {
+            border-color: #667eea;
+            box-shadow: 0 4px 8px rgba(102, 126, 234, 0.1);
+        }
+        
+        .text-decoration-none:hover {
+            text-decoration: underline !important;
+        }
+        
+        .btn-group .btn {
+            border-radius: 0;
+        }
+        
+        .btn-group .btn:first-child {
+            border-top-left-radius: 0.375rem;
+            border-bottom-left-radius: 0.375rem;
+        }
+        
+        .btn-group .btn:last-child {
+            border-top-right-radius: 0.375rem;
+            border-bottom-right-radius: 0.375rem;
+        }
+    `;
+    document.head.appendChild(style);
+});
+</script>
+{% endblock %}

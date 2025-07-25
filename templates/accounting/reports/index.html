@@ -1,0 +1,502 @@
+<!-- templates/accounting/reports/index.html -->
+{% extends "base.html" %}
+
+{% block title %}Financial Reports{% endblock %}
+{% block page_title %}Financial Reports{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h2><i class="fas fa-chart-bar me-2"></i>Financial Reports</h2>
+                <p class="text-muted mb-0">Access financial statements and accounting reports</p>
+            </div>
+            <div>
+                <a href="{{ url_for('accounting.dashboard') }}" class="btn btn-outline-primary">
+                    <i class="fas fa-arrow-left me-2"></i>Back to Accounting
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Report Categories -->
+<div class="row">
+    <!-- Primary Financial Reports -->
+    <div class="col-md-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header bg-primary text-white">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-balance-scale me-2"></i>Primary Financial Reports
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-3">
+                    <div class="report-item">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="mb-1">Trial Balance</h6>
+                                <p class="text-muted small mb-0">Verify that total debits equal total credits</p>
+                            </div>
+                            <a href="{{ url_for('accounting.trial_balance') }}" class="btn btn-outline-primary btn-sm">
+                                <i class="fas fa-balance-scale me-1"></i>View
+                            </a>
+                        </div>
+                    </div>
+                    
+                    <hr class="my-2">
+                    
+                    <div class="report-item">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="mb-1">Chart of Accounts</h6>
+                                <p class="text-muted small mb-0">Complete listing of all accounts</p>
+                            </div>
+                            <a href="{{ url_for('accounting.list_accounts') }}" class="btn btn-outline-primary btn-sm">
+                                <i class="fas fa-chart-pie me-1"></i>View
+                            </a>
+                        </div>
+                    </div>
+                    
+                    <hr class="my-2">
+                    
+                    <div class="report-item opacity-50">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="mb-1">Balance Sheet</h6>
+                                <p class="text-muted small mb-0">Assets, liabilities, and equity summary</p>
+                            </div>
+                            <button class="btn btn-outline-secondary btn-sm" disabled>
+                                <i class="fas fa-clock me-1"></i>Coming Soon
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <hr class="my-2">
+                    
+                    <div class="report-item opacity-50">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="mb-1">Income Statement</h6>
+                                <p class="text-muted small mb-0">Revenue and expenses for a period</p>
+                            </div>
+                            <button class="btn btn-outline-secondary btn-sm" disabled>
+                                <i class="fas fa-clock me-1"></i>Coming Soon
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Transaction Reports -->
+    <div class="col-md-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header bg-success text-white">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-file-alt me-2"></i>Transaction Reports
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-3">
+                    <div class="report-item">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="mb-1">Vouchers Payable</h6>
+                                <p class="text-muted small mb-0">All VP transactions and their status</p>
+                            </div>
+                            <a href="{{ url_for('accounting.list_vouchers_payable') }}" class="btn btn-outline-success btn-sm">
+                                <i class="fas fa-file-invoice me-1"></i>View
+                            </a>
+                        </div>
+                    </div>
+                    
+                    <hr class="my-2">
+                    
+                    <div class="report-item">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="mb-1">Check Vouchers</h6>
+                                <p class="text-muted small mb-0">All CV transactions and payments made</p>
+                            </div>
+                            <a href="{{ url_for('accounting.list_check_vouchers') }}" class="btn btn-outline-success btn-sm">
+                                <i class="fas fa-check me-1"></i>View
+                            </a>
+                        </div>
+                    </div>
+                    
+                    <hr class="my-2">
+                    
+                    <div class="report-item opacity-50">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="mb-1">Cash Flow Statement</h6>
+                                <p class="text-muted small mb-0">Cash receipts and payments</p>
+                            </div>
+                            <button class="btn btn-outline-secondary btn-sm" disabled>
+                                <i class="fas fa-clock me-1"></i>Coming Soon
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <hr class="my-2">
+                    
+                    <div class="report-item opacity-50">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="mb-1">General Ledger</h6>
+                                <p class="text-muted small mb-0">Complete transaction history by account</p>
+                            </div>
+                            <button class="btn btn-outline-secondary btn-sm" disabled>
+                                <i class="fas fa-clock me-1"></i>Coming Soon
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Analytical Reports -->
+    <div class="col-md-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header bg-info text-white">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-chart-line me-2"></i>Analytical Reports
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-3">
+                    <div class="report-item opacity-50">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="mb-1">Aging Report</h6>
+                                <p class="text-muted small mb-0">Outstanding payables by age</p>
+                            </div>
+                            <button class="btn btn-outline-secondary btn-sm" disabled>
+                                <i class="fas fa-clock me-1"></i>Coming Soon
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <hr class="my-2">
+                    
+                    <div class="report-item opacity-50">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="mb-1">Vendor Summary</h6>
+                                <p class="text-muted small mb-0">Total payments by vendor</p>
+                            </div>
+                            <button class="btn btn-outline-secondary btn-sm" disabled>
+                                <i class="fas fa-clock me-1"></i>Coming Soon
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <hr class="my-2">
+                    
+                    <div class="report-item opacity-50">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="mb-1">Expense Analysis</h6>
+                                <p class="text-muted small mb-0">Expense breakdown by category</p>
+                            </div>
+                            <button class="btn btn-outline-secondary btn-sm" disabled>
+                                <i class="fas fa-clock me-1"></i>Coming Soon
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <hr class="my-2">
+                    
+                    <div class="report-item opacity-50">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="mb-1">Budget vs Actual</h6>
+                                <p class="text-muted small mb-0">Compare budgeted to actual amounts</p>
+                            </div>
+                            <button class="btn btn-outline-secondary btn-sm" disabled>
+                                <i class="fas fa-clock me-1"></i>Coming Soon
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Administrative Reports -->
+    <div class="col-md-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header bg-warning text-dark">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-cog me-2"></i>Administrative Reports
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-3">
+                    {% if session.role == 'admin' %}
+                    <div class="report-item">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="mb-1">User Management</h6>
+                                <p class="text-muted small mb-0">User accounts and permissions</p>
+                            </div>
+                            <a href="{{ url_for('users.list_users') }}" class="btn btn-outline-warning btn-sm">
+                                <i class="fas fa-users me-1"></i>View
+                            </a>
+                        </div>
+                    </div>
+                    
+                    <hr class="my-2">
+                    {% endif %}
+                    
+                    <div class="report-item opacity-50">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="mb-1">Audit Log</h6>
+                                <p class="text-muted small mb-0">System activity and changes</p>
+                            </div>
+                            <button class="btn btn-outline-secondary btn-sm" disabled>
+                                <i class="fas fa-clock me-1"></i>Coming Soon
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <hr class="my-2">
+                    
+                    <div class="report-item opacity-50">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="mb-1">System Statistics</h6>
+                                <p class="text-muted small mb-0">Database and performance metrics</p>
+                            </div>
+                            <button class="btn btn-outline-secondary btn-sm" disabled>
+                                <i class="fas fa-clock me-1"></i>Coming Soon
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <hr class="my-2">
+                    
+                    <div class="report-item opacity-50">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="mb-1">Data Export</h6>
+                                <p class="text-muted small mb-0">Export data to Excel/CSV</p>
+                            </div>
+                            <button class="btn btn-outline-secondary btn-sm" disabled>
+                                <i class="fas fa-clock me-1"></i>Coming Soon
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Quick Report Generation -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-magic me-2"></i>Quick Report Generation
+                </h5>
+            </div>
+            <div class="card-body">
+                <p class="text-muted">Generate custom reports with specific date ranges and parameters.</p>
+                
+                <form class="row g-3" onsubmit="generateQuickReport(event)">
+                    <div class="col-md-3">
+                        <label for="reportType" class="form-label">Report Type</label>
+                        <select class="form-select" id="reportType" required>
+                            <option value="">Select Report</option>
+                            <option value="trial_balance">Trial Balance</option>
+                            <option value="vouchers_payable" disabled>VP Summary (Soon)</option>
+                            <option value="check_vouchers" disabled>CV Summary (Soon)</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label for="startDate" class="form-label">Start Date</label>
+                        <input type="date" class="form-control" id="startDate">
+                    </div>
+                    <div class="col-md-3">
+                        <label for="endDate" class="form-label">End Date</label>
+                        <input type="date" class="form-control" id="endDate" value="{{ date.today().isoformat() }}">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">&nbsp;</label>
+                        <button type="submit" class="btn btn-primary d-block w-100">
+                            <i class="fas fa-chart-bar me-2"></i>Generate Report
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Report Help -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card bg-light">
+            <div class="card-body">
+                <h6><i class="fas fa-question-circle me-2"></i>Report Descriptions</h6>
+                <div class="row">
+                    <div class="col-md-6">
+                        <dl class="small">
+                            <dt>Trial Balance</dt>
+                            <dd>Lists all accounts with their debit and credit balances. Used to verify that the accounting equation (Assets = Liabilities + Equity) is in balance.</dd>
+                            
+                            <dt>Chart of Accounts</dt>
+                            <dd>Complete listing of all account codes and descriptions used in the accounting system.</dd>
+                            
+                            <dt>Vouchers Payable (VP)</dt>
+                            <dd>Lists all payment obligations to vendors and suppliers, showing amounts owed and due dates.</dd>
+                        </dl>
+                    </div>
+                    <div class="col-md-6">
+                        <dl class="small">
+                            <dt>Check Vouchers (CV)</dt>
+                            <dd>Lists all payments made to vendors, showing check numbers, dates, and amounts paid.</dd>
+                            
+                            <dt>Balance Sheet</dt>
+                            <dd>Shows the financial position at a specific date, listing assets, liabilities, and equity.</dd>
+                            
+                            <dt>Income Statement</dt>
+                            <dd>Shows revenue and expenses for a period, calculating net income or loss.</dd>
+                        </dl>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function generateQuickReport(event) {
+    event.preventDefault();
+    
+    const reportType = document.getElementById('reportType').value;
+    const startDate = document.getElementById('startDate').value;
+    const endDate = document.getElementById('endDate').value;
+    
+    if (!reportType) {
+        alert('Please select a report type');
+        return;
+    }
+    
+    let url;
+    const params = new URLSearchParams();
+    
+    switch(reportType) {
+        case 'trial_balance':
+            url = "{{ url_for('accounting.trial_balance') }}";
+            if (endDate) {
+                params.append('as_of_date', endDate);
+            }
+            break;
+        default:
+            alert('This report type is not yet implemented');
+            return;
+    }
+    
+    // Navigate to the report with parameters
+    if (params.toString()) {
+        url += '?' + params.toString();
+    }
+    
+    window.open(url, '_blank');
+}
+
+// Set default date range (current month)
+document.addEventListener('DOMContentLoaded', function() {
+    const today = new Date();
+    const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+    
+    document.getElementById('startDate').value = firstDay.toISOString().split('T')[0];
+    document.getElementById('endDate').value = today.toISOString().split('T')[0];
+});
+
+// Keyboard shortcuts
+document.addEventListener('keydown', function(e) {
+    if (e.ctrlKey || e.metaKey) {
+        switch(e.key) {
+            case 't':
+                e.preventDefault();
+                window.location.href = "{{ url_for('accounting.trial_balance') }}";
+                break;
+            case 'c':
+                e.preventDefault();
+                window.location.href = "{{ url_for('accounting.list_accounts') }}";
+                break;
+            case 'v':
+                e.preventDefault();
+                window.location.href = "{{ url_for('accounting.list_vouchers_payable') }}";
+                break;
+        }
+    }
+});
+</script>
+
+<style>
+.report-item {
+    padding: 0.5rem 0;
+    transition: all 0.2s ease;
+}
+
+.report-item:hover {
+    background-color: rgba(0, 0, 0, 0.02);
+    border-radius: 0.5rem;
+    padding: 0.75rem;
+    margin: -0.25rem;
+}
+
+.card-header {
+    border-bottom: 2px solid rgba(255, 255, 255, 0.2);
+}
+
+.opacity-50 {
+    opacity: 0.6;
+}
+
+.btn-sm {
+    padding: 0.25rem 0.75rem;
+    font-size: 0.875rem;
+}
+
+.card {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+}
+
+hr {
+    margin: 0.5rem 0;
+    opacity: 0.3;
+}
+
+.bg-light {
+    background-color: #f8f9fa !important;
+}
+
+dl {
+    margin-bottom: 0;
+}
+
+dd {
+    margin-bottom: 0.5rem;
+}
+</style>
+{% endblock %}

@@ -43,6 +43,16 @@
             background-color: rgba(255,255,255,0.2);
         }
         
+        .nav-section-divider {
+            color: rgba(255,255,255,0.6);
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin: 1rem 0 0.5rem 0;
+            padding: 0 1rem;
+        }
+        
         .main-content {
             margin-left: 250px;
             background-color: #f8f9fa;
@@ -106,6 +116,16 @@
             transform: translateY(-2px);
         }
         
+        .dropdown-submenu {
+            position: relative;
+        }
+        
+        .dropdown-submenu .dropdown-menu {
+            top: 0;
+            left: 100%;
+            margin-top: -1px;
+        }
+        
         @media (max-width: 768px) {
             .sidebar {
                 transform: translateX(-100%);
@@ -127,64 +147,124 @@
             </h5>
             
             <nav class="nav flex-column">
+                <!-- Dashboard -->
                 <a class="nav-link {% if request.endpoint == 'dashboard.index' %}active{% endif %}" 
                    href="{{ url_for('dashboard.index') }}">
                     <i class="fas fa-tachometer-alt me-2"></i>
                     Dashboard
                 </a>
                 
-                {% if session.role == 'admin' %}
-                <div class="nav-link text-white-50 mt-3 mb-1">
-                    <small>ADMINISTRATION</small>
+                <!-- Accounting Section -->
+                <div class="nav-section-divider">ACCOUNTING</div>
+                
+                <a class="nav-link {% if request.endpoint == 'accounting.dashboard' %}active{% endif %}" 
+                   href="{{ url_for('accounting.dashboard') }}">
+                    <i class="fas fa-chart-line me-2"></i>
+                    Accounting Dashboard
+                </a>
+                
+                <div class="dropdown">
+                    <a class="nav-link dropdown-toggle {% if request.endpoint.startswith('accounting.') and ('voucher' in request.endpoint) %}active{% endif %}" 
+                       href="#" data-bs-toggle="dropdown">
+                        <i class="fas fa-file-invoice-dollar me-2"></i>
+                        Transactions
+                    </a>
+                    <ul class="dropdown-menu bg-dark border-0">
+                        <li><a class="dropdown-item text-white" href="{{ url_for('accounting.list_vouchers_payable') }}">
+                            <i class="fas fa-file-invoice me-2"></i>Vouchers Payable
+                        </a></li>
+                        <li><a class="dropdown-item text-white" href="{{ url_for('accounting.create_voucher_payable') }}">
+                            <i class="fas fa-plus me-2"></i>New Voucher Payable
+                        </a></li>
+                        <li><hr class="dropdown-divider border-secondary"></li>
+                        <li><a class="dropdown-item text-white" href="{{ url_for('accounting.list_check_vouchers') }}">
+                            <i class="fas fa-check me-2"></i>Check Vouchers
+                        </a></li>
+                        <li><a class="dropdown-item text-white" href="{{ url_for('accounting.create_check_voucher') }}">
+                            <i class="fas fa-plus me-2"></i>New Check Voucher
+                        </a></li>
+                    </ul>
                 </div>
+                
+                <a class="nav-link {% if request.endpoint == 'accounting.list_accounts' %}active{% endif %}" 
+                   href="{{ url_for('accounting.list_accounts') }}">
+                    <i class="fas fa-chart-pie me-2"></i>
+                    Chart of Accounts
+                </a>
+                
+                <div class="dropdown">
+                    <a class="nav-link dropdown-toggle {% if request.endpoint.startswith('accounting.reports') %}active{% endif %}" 
+                       href="#" data-bs-toggle="dropdown">
+                        <i class="fas fa-chart-bar me-2"></i>
+                        Reports
+                    </a>
+                    <ul class="dropdown-menu bg-dark border-0">
+                        <li><a class="dropdown-item text-white" href="{{ url_for('accounting.trial_balance') }}">
+                            <i class="fas fa-balance-scale me-2"></i>Trial Balance
+                        </a></li>
+                        <li><a class="dropdown-item text-white" href="{{ url_for('accounting.reports') }}">
+                            <i class="fas fa-chart-bar me-2"></i>All Reports
+                        </a></li>
+                    </ul>
+                </div>
+                
+                <!-- Administration Section (Admin Only) -->
+                {% if session.role == 'admin' %}
+                <div class="nav-section-divider">ADMINISTRATION</div>
+                
                 <a class="nav-link {% if request.endpoint.startswith('users.') %}active{% endif %}" 
                    href="{{ url_for('users.list_users') }}">
                     <i class="fas fa-users me-2"></i>
                     User Management
-                    {% if stats and stats.total_users == 1 %}
-                        <span class="badge bg-warning ms-2">Setup</span>
-                    {% endif %}
                 </a>
+                
                 <a class="nav-link" href="#">
                     <i class="fas fa-building me-2"></i>
-                    Companies (Coming Soon)
+                    Companies
+                    <span class="badge bg-light text-dark ms-2">Soon</span>
+                </a>
+                
+                <a class="nav-link" href="#">
+                    <i class="fas fa-cog me-2"></i>
+                    System Settings
+                    <span class="badge bg-light text-dark ms-2">Soon</span>
                 </a>
                 {% endif %}
                 
-                <div class="nav-link text-white-50 mt-3 mb-1">
-                    <small>VOUCHERS</small>
-                </div>
-                <a class="nav-link" href="#">
-                    <i class="fas fa-file-invoice me-2"></i>
-                    Vouchers Payable (Coming Soon)
-                </a>
-                <a class="nav-link" href="#">
-                    <i class="fas fa-check me-2"></i>
-                    Check Vouchers (Coming Soon)
-                </a>
-                <a class="nav-link" href="#">
+                <!-- Future Features -->
+                <div class="nav-section-divider">COMING SOON</div>
+                
+                <a class="nav-link" href="#" style="opacity: 0.6;">
                     <i class="fas fa-university me-2"></i>
-                    Bank Memos (Coming Soon)
-                </a>
-                <a class="nav-link" href="#">
-                    <i class="fas fa-shopping-cart me-2"></i>
-                    Purchase Orders (Coming Soon)
+                    Bank Reconciliation
                 </a>
                 
-                <div class="nav-link text-white-50 mt-3 mb-1">
-                    <small>ACCOUNT</small>
-                </div>
+                <a class="nav-link" href="#" style="opacity: 0.6;">
+                    <i class="fas fa-shopping-cart me-2"></i>
+                    Purchase Orders
+                </a>
+                
+                <a class="nav-link" href="#" style="opacity: 0.6;">
+                    <i class="fas fa-file-contract me-2"></i>
+                    Contracts Management
+                </a>
+                
+                <!-- Account Section -->
+                <div class="nav-section-divider">ACCOUNT</div>
+                
                 <a class="nav-link {% if request.endpoint == 'users.profile' %}active{% endif %}" 
                    href="{{ url_for('users.profile') }}">
                     <i class="fas fa-user me-2"></i>
                     My Profile
                 </a>
+                
                 <a class="nav-link" href="{{ url_for('auth.logout') }}">
                     <i class="fas fa-sign-out-alt me-2"></i>
                     Logout
                 </a>
             </nav>
             
+            <!-- User Info Panel -->
             <div class="mt-4 p-3 bg-white bg-opacity-10 rounded">
                 <div class="d-flex align-items-center">
                     <div class="user-avatar me-2">
@@ -207,7 +287,32 @@
         <nav class="navbar navbar-expand-lg navbar-light bg-white border-bottom">
             <div class="container-fluid">
                 <h6 class="navbar-brand mb-0">{% block page_title %}Financial Voucher Management{% endblock %}</h6>
-                <div class="navbar-nav ms-auto">
+                
+                <!-- Quick Actions Dropdown -->
+                <div class="navbar-nav ms-auto d-flex flex-row">
+                    <div class="dropdown me-3">
+                        <button class="btn btn-outline-primary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                            <i class="fas fa-plus me-1"></i>Quick Add
+                        </button>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" href="{{ url_for('accounting.create_voucher_payable') }}">
+                                <i class="fas fa-file-invoice me-2"></i>Voucher Payable
+                            </a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('accounting.create_check_voucher') }}">
+                                <i class="fas fa-check me-2"></i>Check Voucher
+                            </a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="{{ url_for('accounting.create_account') }}">
+                                <i class="fas fa-chart-line me-2"></i>Account
+                            </a></li>
+                            {% if session.role == 'admin' %}
+                            <li><a class="dropdown-item" href="{{ url_for('users.create_user') }}">
+                                <i class="fas fa-user-plus me-2"></i>User
+                            </a></li>
+                            {% endif %}
+                        </ul>
+                    </div>
+                    
                     <span class="navbar-text me-3">
                         <i class="fas fa-clock me-1"></i>
                         <span id="current-time"></span>
@@ -243,8 +348,12 @@
         // Update current time
         function updateTime() {
             const now = new Date();
-            document.getElementById('current-time').textContent = now.toLocaleTimeString();
+            const timeElement = document.getElementById('current-time');
+            if (timeElement) {
+                timeElement.textContent = now.toLocaleTimeString();
+            }
         }
+        
         if (document.getElementById('current-time')) {
             updateTime();
             setInterval(updateTime, 1000);
@@ -261,6 +370,27 @@
                     }
                 });
             }, 5000);
+        });
+        
+        // Initialize tooltips
+        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+        var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl);
+        });
+        
+        // Dropdown hover functionality for better UX
+        document.querySelectorAll('.dropdown').forEach(function(dropdown) {
+            dropdown.addEventListener('mouseenter', function() {
+                this.querySelector('.dropdown-toggle').click();
+            });
+            
+            dropdown.addEventListener('mouseleave', function() {
+                setTimeout(() => {
+                    if (!this.matches(':hover')) {
+                        this.querySelector('.dropdown-toggle').click();
+                    }
+                }, 300);
+            });
         });
     </script>
     {% block scripts %}{% endblock %}

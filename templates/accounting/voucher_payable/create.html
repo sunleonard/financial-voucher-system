@@ -1,0 +1,495 @@
+<!-- templates/accounting/vouchers_payable/create.html -->
+{% extends "base.html" %}
+
+{% block title %}Create Voucher Payable{% endblock %}
+{% block page_title %}Create New Voucher Payable{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-file-invoice me-2"></i>Create New Voucher Payable
+                </h5>
+            </div>
+            <div class="card-body">
+                <form method="POST" id="createVPForm">
+                    <!-- Basic Information -->
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="transaction_date" class="form-label">Transaction Date <span class="text-danger">*</span></label>
+                                <input type="date" class="form-control" id="transaction_date" name="transaction_date" 
+                                       value="{{ date.today() }}" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="due_date" class="form-label">Due Date</label>
+                                <input type="date" class="form-control" id="due_date" name="due_date">
+                                <div class="form-text">Leave blank if no specific due date</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="payee_code" class="form-label">Payee <span class="text-danger">*</span></label>
+                                <select class="form-select" id="payee_code" name="payee_code" required>
+                                    <option value="">Select Payee</option>
+                                    {% for payee in payees %}
+                                    <option value="{{ payee.acct_code }}">
+                                        {{ payee.acct_description }} ({{ payee.acct_code }})
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                                <div class="form-text">
+                                    <a href="{{ url_for('accounting.create_account') }}" target="_blank">
+                                        Add new payee account
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="total_amount" class="form-label">Total Amount <span class="text-danger">*</span></label>
+                                <div class="input-group">
+                                    <span class="input-group-text">$</span>
+                                    <input type="number" class="form-control" id="total_amount" name="total_amount" 
+                                           step="0.01" min="0.01" required>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="description" class="form-label">Description</label>
+                        <textarea class="form-control" id="description" name="description" rows="3" 
+                                  placeholder="Brief description of the voucher purpose"></textarea>
+                    </div>
+                    
+                    <!-- Credit/Debit Lines -->
+                    <div class="card mt-4">
+                        <div class="card-header">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <h6 class="mb-0">
+                                    <i class="fas fa-balance-scale me-2"></i>Credit/Debit Lines
+                                </h6>
+                                <div>
+                                    <button type="button" class="btn btn-sm btn-outline-primary" onclick="addCreditDebitLine()">
+                                        <i class="fas fa-plus me-1"></i>Add Line
+                                    </button>
+                                    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="useDefaultEntries()">
+                                        <i class="fas fa-magic me-1"></i>Use Default
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div class="alert alert-info alert-sm">
+                                <i class="fas fa-info-circle me-2"></i>
+                                <strong>Double-Entry Accounting:</strong> Total debits must equal total credits. 
+                                Leave blank to use default entries (Debit: General Expense, Credit: Accounts Payable).
+                            </div>
+                            
+                            <div id="creditDebitLines">
+                                <!-- Credit/Debit lines will be added here dynamically -->
+                            </div>
+                            
+                            <div class="row mt-3">
+                                <div class="col-md-4">
+                                    <div class="alert alert-light mb-0">
+                                        <strong>Total Debits:</strong> $<span id="totalDebits">0.00</span>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="alert alert-light mb-0">
+                                        <strong>Total Credits:</strong> $<span id="totalCredits">0.00</span>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="alert mb-0" id="balanceAlert">
+                                        <strong>Difference:</strong> $<span id="balanceDifference">0.00</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Subsidiary Codes -->
+                    <div class="card mt-4">
+                        <div class="card-header">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <h6 class="mb-0">
+                                    <i class="fas fa-sitemap me-2"></i>Subsidiary Breakdown (Optional)
+                                </h6>
+                                <button type="button" class="btn btn-sm btn-outline-primary" onclick="addSubsidiaryLine()">
+                                    <i class="fas fa-plus me-1"></i>Add Subsidiary
+                                </button>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div class="alert alert-info alert-sm">
+                                <i class="fas fa-info-circle me-2"></i>
+                                Break down expenses by department, project, or other categories for detailed tracking.
+                            </div>
+                            
+                            <div id="subsidiaryLines">
+                                <!-- Subsidiary lines will be added here dynamically -->
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Hidden fields for counting lines -->
+                    <input type="hidden" id="cd_line_count" name="cd_line_count" value="0">
+                    <input type="hidden" id="sub_line_count" name="sub_line_count" value="0">
+                    
+                    <!-- Form Actions -->
+                    <div class="d-flex gap-2 mt-4">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save me-2"></i>Create Voucher Payable
+                        </button>
+                        <a href="{{ url_for('accounting.list_vouchers_payable') }}" class="btn btn-secondary">
+                            <i class="fas fa-times me-2"></i>Cancel
+                        </a>
+                        <button type="button" class="btn btn-outline-info" onclick="validateBalance()">
+                            <i class="fas fa-calculator me-2"></i>Check Balance
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Help Panel -->
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h6 class="card-title mb-0">Voucher Payable Guide</h6>
+            </div>
+            <div class="card-body">
+                <h6 class="text-primary">What is a Voucher Payable?</h6>
+                <p class="small">A VP records an obligation to pay a vendor or supplier. It represents money you owe.</p>
+                
+                <h6 class="text-primary mt-3">Typical Accounting Entries:</h6>
+                <div class="small">
+                    <strong>For Expenses:</strong>
+                    <ul class="mb-2">
+                        <li>Debit: Expense Account</li>
+                        <li>Credit: Accounts Payable</li>
+                    </ul>
+                    
+                    <strong>For Asset Purchases:</strong>
+                    <ul class="mb-2">
+                        <li>Debit: Asset Account</li>
+                        <li>Credit: Accounts Payable</li>
+                    </ul>
+                </div>
+                
+                <h6 class="text-primary mt-3">Common Expense Accounts:</h6>
+                <div class="small">
+                    {% for account in expense_accounts[:8] %}
+                    <div class="d-flex justify-content-between">
+                        <span>{{ account.acct_code }}</span>
+                        <span class="text-muted">{{ account.acct_description }}</span>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        
+        <div class="card mt-3">
+            <div class="card-header">
+                <h6 class="card-title mb-0">Account Search</h6>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <input type="text" class="form-control form-control-sm" id="accountSearch" 
+                           placeholder="Search accounts...">
+                </div>
+                <div id="accountSearchResults" class="small" style="max-height: 200px; overflow-y: auto;">
+                    <!-- Search results will appear here -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let cdLineCount = 0;
+let subLineCount = 0;
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Account search functionality
+    const accountSearch = document.getElementById('accountSearch');
+    const searchResults = document.getElementById('accountSearchResults');
+    
+    accountSearch.addEventListener('input', function() {
+        const searchTerm = this.value.trim();
+        if (searchTerm.length < 2) {
+            searchResults.innerHTML = '';
+            return;
+        }
+        
+        fetch(`/accounting/api/accounts/search?q=${encodeURIComponent(searchTerm)}`)
+            .then(response => response.json())
+            .then(accounts => {
+                searchResults.innerHTML = accounts.map(account => `
+                    <div class="border-bottom py-1 cursor-pointer account-result" 
+                         data-code="${account.acct_code}" 
+                         data-description="${account.acct_description}">
+                        <strong>${account.acct_code}</strong> - ${account.acct_description}
+                        <br><small class="text-muted">${account.acct_type} (${account.acct_prefix || 'No prefix'})</small>
+                    </div>
+                `).join('');
+                
+                // Add click handlers to results
+                document.querySelectorAll('.account-result').forEach(result => {
+                    result.addEventListener('click', function() {
+                        const code = this.dataset.code;
+                        const description = this.dataset.description;
+                        // You can use this to populate forms
+                        console.log('Selected account:', code, description);
+                    });
+                });
+            })
+            .catch(error => {
+                console.error('Error searching accounts:', error);
+                searchResults.innerHTML = '<div class="text-danger">Error searching accounts</div>';
+            });
+    });
+});
+
+function addCreditDebitLine() {
+    const container = document.getElementById('creditDebitLines');
+    const lineNumber = cdLineCount++;
+    
+    const lineHtml = `
+        <div class="row mb-2 cd-line" id="cdLine${lineNumber}">
+            <div class="col-md-3">
+                <input type="text" class="form-control form-control-sm" 
+                       name="cd_acct_code_${lineNumber}" placeholder="Account Code" 
+                       onchange="calculateBalance()">
+            </div>
+            <div class="col-md-4">
+                <input type="text" class="form-control form-control-sm" 
+                       name="cd_acct_desc_${lineNumber}" placeholder="Account Description">
+            </div>
+            <div class="col-md-2">
+                <select class="form-select form-select-sm" name="cd_acct_type_${lineNumber}" 
+                        onchange="calculateBalance()" required>
+                    <option value="">Type</option>
+                    <option value="D">Debit</option>
+                    <option value="C">Credit</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <input type="number" class="form-control form-control-sm" 
+                       name="cd_amount_${lineNumber}" placeholder="Amount" 
+                       step="0.01" min="0" onchange="calculateBalance()">
+            </div>
+            <div class="col-md-1">
+                <button type="button" class="btn btn-sm btn-outline-danger" 
+                        onclick="removeCreditDebitLine(${lineNumber})">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </div>
+        </div>
+    `;
+    
+    container.insertAdjacentHTML('beforeend', lineHtml);
+    document.getElementById('cd_line_count').value = cdLineCount;
+}
+
+function removeCreditDebitLine(lineNumber) {
+    const line = document.getElementById(`cdLine${lineNumber}`);
+    if (line) {
+        line.remove();
+        calculateBalance();
+    }
+}
+
+function addSubsidiaryLine() {
+    const container = document.getElementById('subsidiaryLines');
+    const lineNumber = subLineCount++;
+    
+    const lineHtml = `
+        <div class="row mb-2 sub-line" id="subLine${lineNumber}">
+            <div class="col-md-3">
+                <input type="text" class="form-control form-control-sm" 
+                       name="sub_acct_code_${lineNumber}" placeholder="Account Code">
+            </div>
+            <div class="col-md-3">
+                <input type="text" class="form-control form-control-sm" 
+                       name="sub_acct_desc_${lineNumber}" placeholder="Account Description">
+            </div>
+            <div class="col-md-2">
+                <input type="text" class="form-control form-control-sm" 
+                       name="sub_subsidiary_code_${lineNumber}" placeholder="Sub Code">
+            </div>
+            <div class="col-md-2">
+                <input type="text" class="form-control form-control-sm" 
+                       name="sub_subsidiary_desc_${lineNumber}" placeholder="Sub Description">
+            </div>
+            <div class="col-md-1">
+                <input type="number" class="form-control form-control-sm" 
+                       name="sub_amount_${lineNumber}" placeholder="Amount" 
+                       step="0.01" min="0">
+            </div>
+            <div class="col-md-1">
+                <button type="button" class="btn btn-sm btn-outline-danger" 
+                        onclick="removeSubsidiaryLine(${lineNumber})">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </div>
+        </div>
+    `;
+    
+    container.insertAdjacentHTML('beforeend', lineHtml);
+    document.getElementById('sub_line_count').value = subLineCount;
+}
+
+function removeSubsidiaryLine(lineNumber) {
+    const line = document.getElementById(`subLine${lineNumber}`);
+    if (line) {
+        line.remove();
+    }
+}
+
+function useDefaultEntries() {
+    // Clear existing lines
+    document.getElementById('creditDebitLines').innerHTML = '';
+    cdLineCount = 0;
+    
+    // Add default expense entry
+    addCreditDebitLine();
+    const firstLine = document.querySelector('#creditDebitLines .cd-line:last-child');
+    firstLine.querySelector('input[name^="cd_acct_code_"]').value = '5000';
+    firstLine.querySelector('input[name^="cd_acct_desc_"]').value = 'General Expense';
+    firstLine.querySelector('select[name^="cd_acct_type_"]').value = 'D';
+    
+    // Add default accounts payable entry
+    addCreditDebitLine();
+    const secondLine = document.querySelector('#creditDebitLines .cd-line:last-child');
+    secondLine.querySelector('input[name^="cd_acct_code_"]').value = '2000';
+    secondLine.querySelector('input[name^="cd_acct_desc_"]').value = 'Accounts Payable';
+    secondLine.querySelector('select[name^="cd_acct_type_"]').value = 'C';
+    
+    // Copy total amount to both lines
+    const totalAmount = document.getElementById('total_amount').value;
+    if (totalAmount) {
+        document.querySelectorAll('#creditDebitLines input[name^="cd_amount_"]').forEach(input => {
+            input.value = totalAmount;
+        });
+    }
+    
+    calculateBalance();
+}
+
+function calculateBalance() {
+    let totalDebits = 0;
+    let totalCredits = 0;
+    
+    document.querySelectorAll('.cd-line').forEach(line => {
+        const amount = parseFloat(line.querySelector('input[name^="cd_amount_"]').value) || 0;
+        const type = line.querySelector('select[name^="cd_acct_type_"]').value;
+        
+        if (type === 'D') {
+            totalDebits += amount;
+        } else if (type === 'C') {
+            totalCredits += amount;
+        }
+    });
+    
+    const difference = Math.abs(totalDebits - totalCredits);
+    const isBalanced = difference < 0.01;
+    
+    document.getElementById('totalDebits').textContent = totalDebits.toFixed(2);
+    document.getElementById('totalCredits').textContent = totalCredits.toFixed(2);
+    document.getElementById('balanceDifference').textContent = difference.toFixed(2);
+    
+    const balanceAlert = document.getElementById('balanceAlert');
+    if (isBalanced) {
+        balanceAlert.className = 'alert alert-success mb-0';
+    } else {
+        balanceAlert.className = 'alert alert-warning mb-0';
+    }
+}
+
+function validateBalance() {
+    calculateBalance();
+    
+    const difference = parseFloat(document.getElementById('balanceDifference').textContent);
+    const totalAmount = parseFloat(document.getElementById('total_amount').value) || 0;
+    
+    if (difference < 0.01) {
+        alert('✅ Credit/Debit entries are balanced!');
+    } else {
+        alert(`⚠️ Credit/Debit entries are not balanced!\nDifference: $${difference.toFixed(2)}`);
+    }
+}
+
+// Auto-populate amounts when total amount changes
+document.getElementById('total_amount').addEventListener('change', function() {
+    const totalAmount = this.value;
+    const cdLines = document.querySelectorAll('.cd-line');
+    
+    if (cdLines.length === 2) {
+        // If we have exactly 2 lines (default setup), populate both with total amount
+        cdLines.forEach(line => {
+            const amountInput = line.querySelector('input[name^="cd_amount_"]');
+            if (!amountInput.value) {
+                amountInput.value = totalAmount;
+            }
+        });
+        calculateBalance();
+    }
+});
+
+// Form validation
+document.getElementById('createVPForm').addEventListener('submit', function(e) {
+    const cdLines = document.querySelectorAll('.cd-line');
+    if (cdLines.length > 0) {
+        calculateBalance();
+        const difference = parseFloat(document.getElementById('balanceDifference').textContent);
+        
+        if (difference >= 0.01) {
+            if (!confirm('Credit/Debit entries are not balanced. Continue anyway?')) {
+                e.preventDefault();
+                return false;
+            }
+        }
+    }
+});
+</script>
+
+<style>
+.cursor-pointer {
+    cursor: pointer;
+}
+
+.account-result:hover {
+    background-color: #f8f9fa;
+}
+
+.alert-sm {
+    padding: 0.5rem;
+    margin-bottom: 1rem;
+    font-size: 0.875rem;
+}
+
+.cd-line, .sub-line {
+    border-bottom: 1px solid #dee2e6;
+    padding-bottom: 0.5rem;
+    margin-bottom: 0.5rem !important;
+}
+
+.cd-line:last-child, .sub-line:last-child {
+    border-bottom: none;
+}
+</style>
+{% endblock %}
