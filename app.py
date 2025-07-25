@@ -16,6 +16,8 @@ from routes.auth import create_auth_blueprint
 from routes.users import create_users_blueprint
 from routes.dashboard import create_dashboard_blueprint
 from routes.accounting import create_accounting_blueprint
+from routes.companies import create_companies_blueprint
+from routes.vouchers import create_vouchers_blueprint
 
 def create_app(config_name=None):
     """Application factory pattern"""
@@ -87,6 +89,8 @@ def create_app(config_name=None):
     app.register_blueprint(create_users_blueprint(db_manager))
     app.register_blueprint(create_dashboard_blueprint(db_manager))
     app.register_blueprint(create_accounting_blueprint(db_manager))
+    app.register_blueprint(create_companies_blueprint(db_manager))
+    app.register_blueprint(create_vouchers_blueprint(db_manager))
     
     # Root route with smart routing
     @app.route('/')
