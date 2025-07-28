@@ -62,7 +62,7 @@ A comprehensive web-based financial management system for handling vouchers paya
 
 1. **Clone the repository:**
 ```bash
-git clone https://github.com/YOUR_USERNAME/financial-voucher-system.git
+git clone https://github.com/sunleonard/financial-voucher-system.git
 cd financial-voucher-system
 ```
 
