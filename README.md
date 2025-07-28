@@ -261,10 +261,10 @@ Key configuration options in `config.py`:
 
 ### Phase 2: Core Features ✅
 - [x] Complete voucher management (VP/CV)
-- [x] Company and vendor management
-- [x] Chart of accounts implementation
-- [x] Financial transaction processing
-- [x] Basic reporting capabilities
+- [ ] Company and vendor management
+- [ ] Chart of accounts implementation
+- [ ] Financial transaction processing
+- [ ] Basic reporting capabilities
 
 ### Phase 3: Advanced Features (In Progress)
 - [ ] Advanced financial reporting and analytics
