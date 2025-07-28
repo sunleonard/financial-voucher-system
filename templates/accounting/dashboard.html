@@ -1,4 +1,3 @@
-<!-- templates/accounting/dashboard.html -->
 {% extends "base.html" %}
 
 {% block title %}Accounting Dashboard{% endblock %}
@@ -6,28 +5,14 @@
 
 {% block content %}
 <div class="row mb-4">
+    <!-- Welcome Section -->
     <div class="col-12">
-        <div class="d-flex justify-content-between align-items-center">
-            <div>
-                <h2 class="mb-1">Accounting Dashboard</h2>
-                <p class="text-muted mb-0">Overview of your financial transactions and accounting data</p>
-            </div>
-            <div class="dropdown">
-                <button class="btn btn-primary dropdown-toggle" type="button" data-bs-toggle="dropdown">
-                    <i class="fas fa-plus me-2"></i>New Transaction
-                </button>
-                <ul class="dropdown-menu">
-                    <li><a class="dropdown-item" href="{{ url_for('accounting.create_voucher_payable') }}">
-                        <i class="fas fa-file-invoice me-2"></i>Voucher Payable
-                    </a></li>
-                    <li><a class="dropdown-item" href="{{ url_for('accounting.create_check_voucher') }}">
-                        <i class="fas fa-check me-2"></i>Check Voucher
-                    </a></li>
-                    <li><hr class="dropdown-divider"></li>
-                    <li><a class="dropdown-item" href="{{ url_for('accounting.create_account') }}">
-                        <i class="fas fa-chart-line me-2"></i>New Account
-                    </a></li>
-                </ul>
+        <div class="card bg-primary text-white">
+            <div class="card-body">
+                <h4 class="card-title mb-0">
+                    <i class="fas fa-chart-line me-2"></i>Financial Management Hub
+                </h4>
+                <p class="card-text mb-0">Monitor your vouchers, payments, and financial transactions</p>
             </div>
         </div>
     </div>
@@ -35,90 +20,64 @@
 
 <!-- Statistics Cards -->
 <div class="row mb-4">
-    <div class="col-md-3 mb-3">
-        <div class="card text-white bg-primary">
+    <div class="col-md-6 mb-3">
+        <div class="card h-100">
             <div class="card-body">
-                <div class="d-flex justify-content-between">
+                <div class="d-flex justify-content-between align-items-start">
                     <div>
-                        <h3 class="mb-0">{{ financial_summary.ledger_statistics.by_type.VP.count or 0 }}</h3>
-                        <p class="mb-0">Vouchers Payable</p>
+                        <h6 class="card-title text-primary">
+                            <i class="fas fa-file-invoice me-2"></i>Vouchers Payable
+                        </h6>
+                        <h3 class="mb-1">{{ vp_stats.total_count or 0 }}</h3>
+                        <p class="text-muted small mb-0">Payment obligations</p>
+                        {% if vp_stats.total_amount %}
+                        <p class="text-success mb-0">
+                            <strong>${{ "%.2f"|format(vp_stats.total_amount) }}</strong> total value
+                        </p>
+                        {% endif %}
                     </div>
-                    <div class="align-self-center">
-                        <i class="fas fa-file-invoice fa-2x opacity-75"></i>
+                    <div class="text-end">
+                        <a href="{{ url_for('accounting.list_vouchers_payable') }}" 
+                           class="btn btn-outline-primary btn-sm">View All</a>
+                        <a href="{{ url_for('accounting.create_voucher_payable') }}" 
+                           class="btn btn-primary btn-sm mt-1">Create VP</a>
                     </div>
-                </div>
-                <div class="mt-2">
-                    <small>${{ "%.2f"|format(financial_summary.ledger_statistics.by_type.VP.amount or 0) }}</small>
                 </div>
             </div>
         </div>
     </div>
     
-    <div class="col-md-3 mb-3">
-        <div class="card text-white bg-success">
+    <div class="col-md-6 mb-3">
+        <div class="card h-100">
             <div class="card-body">
-                <div class="d-flex justify-content-between">
+                <div class="d-flex justify-content-between align-items-start">
                     <div>
-                        <h3 class="mb-0">{{ financial_summary.ledger_statistics.by_type.CV.count or 0 }}</h3>
-                        <p class="mb-0">Check Vouchers</p>
+                        <h6 class="card-title text-success">
+                            <i class="fas fa-check me-2"></i>Check Vouchers
+                        </h6>
+                        <h3 class="mb-1">{{ cv_stats.total_count or 0 }}</h3>
+                        <p class="text-muted small mb-0">Payments made</p>
+                        {% if cv_stats.total_amount %}
+                        <p class="text-success mb-0">
+                            <strong>${{ "%.2f"|format(cv_stats.total_amount) }}</strong> total paid
+                        </p>
+                        {% endif %}
                     </div>
-                    <div class="align-self-center">
-                        <i class="fas fa-check fa-2x opacity-75"></i>
+                    <div class="text-end">
+                        <a href="{{ url_for('accounting.list_check_vouchers') }}" 
+                           class="btn btn-outline-success btn-sm">View All</a>
+                        <a href="{{ url_for('accounting.create_check_voucher') }}" 
+                           class="btn btn-success btn-sm mt-1">Create CV</a>
                     </div>
-                </div>
-                <div class="mt-2">
-                    <small>${{ "%.2f"|format(financial_summary.ledger_statistics.by_type.CV.amount or 0) }}</small>
-                </div>
-            </div>
-        </div>
-    </div>
-    
-    <div class="col-md-3 mb-3">
-        <div class="card text-white bg-warning">
-            <div class="card-body">
-                <div class="d-flex justify-content-between">
-                    <div>
-                        <h3 class="mb-0">{{ overdue_items|length }}</h3>
-                        <p class="mb-0">Overdue Items</p>
-                    </div>
-                    <div class="align-self-center">
-                        <i class="fas fa-exclamation-triangle fa-2x opacity-75"></i>
-                    </div>
-                </div>
-                <div class="mt-2">
-                    <small>
-                        {% set overdue_amount = overdue_items|sum(attribute='total_amount') %}
-                        ${{ "%.2f"|format(overdue_amount) }}
-                    </small>
-                </div>
-            </div>
-        </div>
-    </div>
-    
-    <div class="col-md-3 mb-3">
-        <div class="card text-white bg-info">
-            <div class="card-body">
-                <div class="d-flex justify-content-between">
-                    <div>
-                        <h3 class="mb-0">{{ financial_summary.account_statistics.total_accounts or 0 }}</h3>
-                        <p class="mb-0">Chart of Accounts</p>
-                    </div>
-                    <div class="align-self-center">
-                        <i class="fas fa-chart-line fa-2x opacity-75"></i>
-                    </div>
-                </div>
-                <div class="mt-2">
-                    <small>{{ financial_summary.credit_debit_statistics.total_entries or 0 }} transactions</small>
                 </div>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Quick Actions and Recent Activity -->
-<div class="row">
-    <!-- Quick Actions -->
-    <div class="col-md-3 mb-4">
+<!-- Quick Actions -->
+<div class="row mb-4">
+    <div class="col-12">
         <div class="card">
             <div class="card-header">
                 <h5 class="card-title mb-0">
@@ -126,253 +85,195 @@
                 </h5>
             </div>
             <div class="card-body">
-                <div class="d-grid gap-2">
-                    <a href="{{ url_for('accounting.create_voucher_payable') }}" class="btn btn-primary">
-                        <i class="fas fa-plus me-2"></i>New Voucher Payable
-                    </a>
-                    <a href="{{ url_for('accounting.create_check_voucher') }}" class="btn btn-success">
-                        <i class="fas fa-plus me-2"></i>New Check Voucher
-                    </a>
-                    <a href="{{ url_for('accounting.trial_balance') }}" class="btn btn-outline-info">
-                        <i class="fas fa-balance-scale me-2"></i>Trial Balance
-                    </a>
-                    <a href="{{ url_for('accounting.reports') }}" class="btn btn-outline-secondary">
-                        <i class="fas fa-chart-bar me-2"></i>Reports
-                    </a>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <div class="d-grid">
+                            <a href="{{ url_for('accounting.create_voucher_payable') }}" 
+                               class="btn btn-outline-primary btn-lg">
+                                <i class="fas fa-file-invoice me-2"></i>
+                                Create New Voucher Payable
+                                <small class="d-block text-muted">Record a payment obligation</small>
+                            </a>
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <div class="d-grid">
+                            <a href="{{ url_for('accounting.create_check_voucher') }}" 
+                               class="btn btn-outline-success btn-lg">
+                                <i class="fas fa-check me-2"></i>
+                                Create New Check Voucher
+                                <small class="d-block text-muted">Record a payment made</small>
+                            </a>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
-        
-        {% if overdue_items %}
-        <div class="card mt-3">
+    </div>
+</div>
+
+<!-- Recent Transactions -->
+<div class="row">
+    {% if recent_vp or recent_cv %}
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h6 class="card-title mb-0">
+                    <i class="fas fa-file-invoice me-2"></i>Recent Vouchers Payable
+                </h6>
+            </div>
+            <div class="card-body">
+                {% if recent_vp %}
+                <div class="list-group list-group-flush">
+                    {% for vp in recent_vp[:5] %}
+                    <div class="list-group-item d-flex justify-content-between align-items-center">
+                        <div>
+                            <strong>{{ vp.number if vp.number else 'VP-' + loop.index|string }}</strong><br>
+                            <small class="text-muted">
+                                {{ vp.payee if vp.payee else 'Payee' }} - 
+                                {{ vp.date if vp.date else 'Today' }}
+                            </small>
+                        </div>
+                        <div class="text-end">
+                            <span class="fw-bold text-warning">
+                                ${{ "%.2f"|format(vp.total_amount) if vp.total_amount else "0.00" }}
+                            </span>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="text-center py-3">
+                    <i class="fas fa-file-invoice text-muted mb-2" style="font-size: 2rem;"></i>
+                    <p class="text-muted">No vouchers payable yet</p>
+                    <a href="{{ url_for('accounting.create_voucher_payable') }}" class="btn btn-primary btn-sm">
+                        Create Your First VP
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h6 class="card-title mb-0">
+                    <i class="fas fa-check me-2"></i>Recent Check Vouchers
+                </h6>
+            </div>
+            <div class="card-body">
+                {% if recent_cv %}
+                <div class="list-group list-group-flush">
+                    {% for cv in recent_cv[:5] %}
+                    <div class="list-group-item d-flex justify-content-between align-items-center">
+                        <div>
+                            <strong>{{ cv.number if cv.number else 'CV-' + loop.index|string }}</strong><br>
+                            <small class="text-muted">
+                                {{ cv.payee if cv.payee else 'Payee' }} - 
+                                {{ cv.date if cv.date else 'Today' }}
+                            </small>
+                        </div>
+                        <div class="text-end">
+                            <span class="fw-bold text-success">
+                                ${{ "%.2f"|format(cv.total_amount) if cv.total_amount else "0.00" }}
+                            </span>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="text-center py-3">
+                    <i class="fas fa-check text-muted mb-2" style="font-size: 2rem;"></i>
+                    <p class="text-muted">No check vouchers yet</p>
+                    <a href="{{ url_for('accounting.create_check_voucher') }}" class="btn btn-success btn-sm">
+                        Create Your First CV
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <!-- Getting Started Guide -->
+    <div class="col-12">
+        <div class="card border-primary">
+            <div class="card-header bg-primary text-white">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-rocket me-2"></i>Getting Started with Financial Management
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6 class="text-primary">Step 1: Create Voucher Payable (VP)</h6>
+                        <p class="small text-muted mb-3">
+                            Record when you owe money to vendors or suppliers. This creates a liability on your books.
+                        </p>
+                        <a href="{{ url_for('accounting.create_voucher_payable') }}" 
+                           class="btn btn-primary btn-sm">
+                            <i class="fas fa-file-invoice me-1"></i>Create VP
+                        </a>
+                    </div>
+                    <div class="col-md-6">
+                        <h6 class="text-success">Step 2: Create Check Voucher (CV)</h6>
+                        <p class="small text-muted mb-3">
+                            Record when you actually pay the money. This reduces your cash and pays off the liability.
+                        </p>
+                        <a href="{{ url_for('accounting.create_check_voucher') }}" 
+                           class="btn btn-success btn-sm">
+                            <i class="fas fa-check me-1"></i>Create CV
+                        </a>
+                    </div>
+                </div>
+                
+                <hr class="my-3">
+                
+                <div class="row">
+                    <div class="col-12">
+                        <h6 class="text-info">💡 Pro Tip: Standard Workflow</h6>
+                        <p class="small text-muted mb-0">
+                            <strong>1.</strong> Create VP when you receive an invoice → 
+                            <strong>2.</strong> Create CV when you make the payment → 
+                            <strong>3.</strong> VP is automatically marked as paid
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Overdue Items (if any) -->
+{% if overdue_items %}
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card border-warning">
             <div class="card-header bg-warning text-dark">
                 <h6 class="card-title mb-0">
                     <i class="fas fa-exclamation-triangle me-2"></i>Overdue Items
                 </h6>
             </div>
             <div class="card-body">
-                {% for item in overdue_items[:5] %}
-                <div class="d-flex justify-content-between align-items-center mb-2">
-                    <div>
-                        <a href="{{ url_for('accounting.view_transaction', number=item.number) }}" 
-                           class="text-decoration-none">
-                            <strong>{{ item.number }}</strong>
-                        </a>
-                        <br><small class="text-muted">{{ item.payee }}</small>
+                <div class="list-group list-group-flush">
+                    {% for item in overdue_items %}
+                    <div class="list-group-item d-flex justify-content-between align-items-center">
+                        <div>
+                            <strong>{{ item.number }}</strong> - {{ item.payee }}<br>
+                            <small class="text-danger">Due: {{ item.due_date }}</small>
+                        </div>
+                        <div class="text-end">
+                            <span class="fw-bold text-danger">${{ "%.2f"|format(item.amount) }}</span><br>
+                            <a href="{{ url_for('accounting.create_check_voucher') }}?vp={{ item.number }}" 
+                               class="btn btn-sm btn-warning">Pay Now</a>
+                        </div>
                     </div>
-                    <div class="text-end">
-                        <strong class="text-danger">${{ "%.2f"|format(item.total_amount) }}</strong>
-                        <br><small class="text-muted">Due: {{ item.due_date }}</small>
-                    </div>
+                    {% endfor %}
                 </div>
-                {% if not loop.last %}<hr class="my-2">{% endif %}
-                {% endfor %}
-                
-                {% if overdue_items|length > 5 %}
-                <div class="text-center mt-3">
-                    <a href="{{ url_for('accounting.list_vouchers_payable') }}?status=overdue" 
-                       class="btn btn-sm btn-outline-warning">
-                        View All ({{ overdue_items|length }})
-                    </a>
-                </div>
-                {% endif %}
-            </div>
-        </div>
-        {% endif %}
-    </div>
-    
-    <!-- Recent Vouchers Payable -->
-    <div class="col-md-4 mb-4">
-        <div class="card">
-            <div class="card-header">
-                <div class="d-flex justify-content-between align-items-center">
-                    <h5 class="card-title mb-0">
-                        <i class="fas fa-file-invoice me-2"></i>Recent Vouchers Payable
-                    </h5>
-                    <a href="{{ url_for('accounting.list_vouchers_payable') }}" class="btn btn-sm btn-outline-primary">
-                        View All
-                    </a>
-                </div>
-            </div>
-            <div class="card-body">
-                {% if recent_vp %}
-                {% for vp in recent_vp %}
-                <div class="d-flex justify-content-between align-items-center mb-3">
-                    <div>
-                        <a href="{{ url_for('accounting.view_transaction', number=vp.number) }}" 
-                           class="text-decoration-none">
-                            <strong>{{ vp.number }}</strong>
-                        </a>
-                        <br><small class="text-muted">{{ vp.payee }}</small>
-                        <br><small class="text-muted">{{ vp.date }}</small>
-                    </div>
-                    <div class="text-end">
-                        <strong>${{ "%.2f"|format(vp.total_amount) }}</strong>
-                        <br>
-                        <span class="badge bg-{{ 'success' if vp.status == 'active' else 'secondary' }}">
-                            {{ vp.status|title }}
-                        </span>
-                    </div>
-                </div>
-                {% if not loop.last %}<hr class="my-2">{% endif %}
-                {% endfor %}
-                {% else %}
-                <div class="text-center text-muted py-3">
-                    <i class="fas fa-file-invoice fa-2x mb-2"></i>
-                    <p class="mb-0">No vouchers payable yet</p>
-                    <a href="{{ url_for('accounting.create_voucher_payable') }}" class="btn btn-sm btn-primary mt-2">
-                        Create First VP
-                    </a>
-                </div>
-                {% endif %}
-            </div>
-        </div>
-    </div>
-    
-    <!-- Recent Check Vouchers -->
-    <div class="col-md-5 mb-4">
-        <div class="card">
-            <div class="card-header">
-                <div class="d-flex justify-content-between align-items-center">
-                    <h5 class="card-title mb-0">
-                        <i class="fas fa-check me-2"></i>Recent Check Vouchers
-                    </h5>
-                    <a href="{{ url_for('accounting.list_check_vouchers') }}" class="btn btn-sm btn-outline-success">
-                        View All
-                    </a>
-                </div>
-            </div>
-            <div class="card-body">
-                {% if recent_cv %}
-                {% for cv in recent_cv %}
-                <div class="d-flex justify-content-between align-items-center mb-3">
-                    <div>
-                        <a href="{{ url_for('accounting.view_transaction', number=cv.number) }}" 
-                           class="text-decoration-none">
-                            <strong>{{ cv.number }}</strong>
-                        </a>
-                        <br><small class="text-muted">{{ cv.payee }}</small>
-                        <br><small class="text-muted">{{ cv.date }}</small>
-                        {% if cv.description and 'Check #' in cv.description %}
-                            <br><small class="text-info">{{ cv.description.split('Check #')[1].split(' -')[0] if 'Check #' in cv.description else '' }}</small>
-                        {% endif %}
-                    </div>
-                    <div class="text-end">
-                        <strong>${{ "%.2f"|format(cv.total_amount) }}</strong>
-                        <br>
-                        <span class="badge bg-{{ 'success' if cv.status == 'active' else 'secondary' }}">
-                            {{ cv.status|title }}
-                        </span>
-                    </div>
-                </div>
-                {% if not loop.last %}<hr class="my-2">{% endif %}
-                {% endfor %}
-                {% else %}
-                <div class="text-center text-muted py-3">
-                    <i class="fas fa-check fa-2x mb-2"></i>
-                    <p class="mb-0">No check vouchers yet</p>
-                    <a href="{{ url_for('accounting.create_check_voucher') }}" class="btn btn-sm btn-success mt-2">
-                        Create First CV
-                    </a>
-                </div>
-                {% endif %}
             </div>
         </div>
     </div>
 </div>
-
-<!-- Monthly Transaction Chart -->
-<div class="row">
-    <div class="col-12">
-        <div class="card">
-            <div class="card-header">
-                <h5 class="card-title mb-0">
-                    <i class="fas fa-chart-line me-2"></i>Monthly Transaction Volume
-                </h5>
-            </div>
-            <div class="card-body">
-                <canvas id="monthlyTransactionChart" height="100"></canvas>
-            </div>
-        </div>
-    </div>
-</div>
-{% endblock %}
-
-{% block scripts %}
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Monthly Transaction Chart
-    const ctx = document.getElementById('monthlyTransactionChart').getContext('2d');
-    
-    // Sample data - in real implementation, this would come from the financial_summary
-    const monthlyData = {
-        labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
-        datasets: [{
-            label: 'Vouchers Payable',
-            data: [12, 19, 8, 15, 12, 18, 22, 16, 14, 20, 15, 17],
-            borderColor: 'rgb(13, 110, 253)',
-            backgroundColor: 'rgba(13, 110, 253, 0.1)',
-            tension: 0.4
-        }, {
-            label: 'Check Vouchers',
-            data: [8, 14, 6, 12, 10, 15, 18, 12, 11, 16, 12, 14],
-            borderColor: 'rgb(25, 135, 84)',
-            backgroundColor: 'rgba(25, 135, 84, 0.1)',
-            tension: 0.4
-        }]
-    };
-    
-    new Chart(ctx, {
-        type: 'line',
-        data: monthlyData,
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            scales: {
-                y: {
-                    beginAtZero: true
-                }
-            },
-            plugins: {
-                legend: {
-                    position: 'top',
-                },
-                title: {
-                    display: false
-                }
-            }
-        }
-    });
-    
-    // Auto-refresh data every 5 minutes
-    setInterval(function() {
-        // In a real application, you would fetch updated data here
-        console.log('Refreshing dashboard data...');
-    }, 5 * 60 * 1000);
-});
-</script>
-
-<style>
-.stats-card:hover {
-    transform: translateY(-2px);
-    transition: transform 0.2s;
-}
-
-.card {
-    transition: box-shadow 0.15s ease-in-out;
-}
-
-.card:hover {
-    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
-}
-
-.badge {
-    font-size: 0.75em;
-}
-
-.text-decoration-none:hover {
-    text-decoration: underline !important;
-}
-</style>
+{% endif %}
 {% endblock %}

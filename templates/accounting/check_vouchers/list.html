@@ -1,0 +1,215 @@
+{% extends "base.html" %}
+
+{% block title %}Check Vouchers{% endblock %}
+{% block page_title %}Check Vouchers{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="fas fa-check me-2"></i>Check Vouchers</h2>
+    <a href="{{ url_for('accounting.create_check_voucher') }}" class="btn btn-primary">
+        <i class="fas fa-plus me-2"></i>Create New CV
+    </a>
+</div>
+
+<!-- Statistics Cards -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="stats-card">
+            <h3 class="text-primary">{{ stats.check_vouchers.total_count or 0 }}</h3>
+            <p class="mb-0">Total CVs</p>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stats-card">
+            <h3 class="text-success">${{ "%.2f"|format(stats.check_vouchers.total_amount or 0) }}</h3>
+            <p class="mb-0">Total Payments</p>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stats-card">
+            <h3 class="text-info">{{ (stats.check_vouchers.this_month_count or 0) }}</h3>
+            <p class="mb-0">This Month</p>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stats-card">
+            <h3 class="text-warning">${{ "%.2f"|format(stats.check_vouchers.this_month_amount or 0) }}</h3>
+            <p class="mb-0">Month Amount</p>
+        </div>
+    </div>
+</div>
+
+<!-- Filters -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="GET" class="row g-3">
+            <div class="col-md-4">
+                <label for="payee" class="form-label">Payee</label>
+                <input type="text" class="form-control" id="payee" name="payee" 
+                       placeholder="Search payee..." value="{{ filters.payee }}">
+            </div>
+            <div class="col-md-3">
+                <label for="start_date" class="form-label">From Date</label>
+                <input type="date" class="form-control" id="start_date" name="start_date" 
+                       value="{{ filters.start_date }}">
+            </div>
+            <div class="col-md-3">
+                <label for="end_date" class="form-label">To Date</label>
+                <input type="date" class="form-control" id="end_date" name="end_date" 
+                       value="{{ filters.end_date }}">
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">&nbsp;</label>
+                <div class="d-grid">
+                    <button type="submit" class="btn btn-outline-primary">
+                        <i class="fas fa-filter me-2"></i>Filter
+                    </button>
+                </div>
+            </div>
+        </form>
+        
+        {% if filters.payee or filters.start_date or filters.end_date %}
+        <div class="mt-3">
+            <a href="{{ url_for('accounting.list_check_vouchers') }}" class="btn btn-sm btn-outline-secondary">
+                <i class="fas fa-times me-2"></i>Clear Filters
+            </a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Check Vouchers Table -->
+<div class="card">
+    <div class="card-body">
+        {% if check_vouchers %}
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead class="table-light">
+                    <tr>
+                        <th>CV Number</th>
+                        <th>Date</th>
+                        <th>Payee</th>
+                        <th>Amount</th>
+                        <th>Check #</th>
+                        <th>Bank Account</th>
+                        <th>VP Reference</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for cv in check_vouchers %}
+                    <tr>
+                        <td>
+                            <a href="{{ url_for('accounting.view_transaction', number=cv.number) }}">
+                                {{ cv.number }}
+                            </a>
+                        </td>
+                        <td>{{ cv.date }}</td>
+                        <td>{{ cv.payee }}</td>
+                        <td>
+                            <span class="text-success fw-bold">
+                                ${{ "%.2f"|format(cv.total_amount) }}
+                            </span>
+                        </td>
+                        <td>
+                            {% if cv.check_number %}
+                                <span class="badge bg-info">{{ cv.check_number }}</span>
+                            {% else %}
+                                <span class="text-muted">-</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ cv.bank_account or '-' }}</td>
+                        <td>
+                            {% if cv.vp_reference %}
+                                <a href="{{ url_for('accounting.view_transaction', number=cv.vp_reference) }}" 
+                                   class="text-decoration-none">
+                                    {{ cv.vp_reference }}
+                                </a>
+                            {% else %}
+                                <span class="text-muted">-</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div class="btn-group" role="group">
+                                <a href="{{ url_for('accounting.view_transaction', number=cv.number) }}" 
+                                   class="btn btn-sm btn-outline-primary">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+                                {% if session.role == 'admin' %}
+                                <button type="button" class="btn btn-sm btn-outline-warning" 
+                                        onclick="voidTransaction('{{ cv.number }}')">
+                                    <i class="fas fa-ban"></i>
+                                </button>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Pagination -->
+        {% if current_page > 1 or check_vouchers|length == 25 %}
+        <nav aria-label="Check vouchers pagination" class="mt-3">
+            <ul class="pagination justify-content-center">
+                {% if current_page > 1 %}
+                <li class="page-item">
+                    <a class="page-link" href="{{ url_for('accounting.list_check_vouchers', page=current_page-1) }}">
+                        Previous
+                    </a>
+                </li>
+                {% endif %}
+                
+                <li class="page-item active">
+                    <span class="page-link">{{ current_page }}</span>
+                </li>
+                
+                {% if check_vouchers|length == 25 %}
+                <li class="page-item">
+                    <a class="page-link" href="{{ url_for('accounting.list_check_vouchers', page=current_page+1) }}">
+                        Next
+                    </a>
+                </li>
+                {% endif %}
+            </ul>
+        </nav>
+        {% endif %}
+        
+        {% else %}
+        <div class="text-center py-5">
+            <i class="fas fa-check text-muted mb-3" style="font-size: 3rem;"></i>
+            <h5 class="text-muted">No Check Vouchers Found</h5>
+            <p class="text-muted">Create your first check voucher to track payments.</p>
+            <a href="{{ url_for('accounting.create_check_voucher') }}" class="btn btn-primary">
+                <i class="fas fa-plus me-2"></i>Create Check Voucher
+            </a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+function voidTransaction(cvNumber) {
+    if (confirm(`Are you sure you want to void Check Voucher ${cvNumber}?`)) {
+        fetch(`/accounting/transactions/${cvNumber}/void`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('Error voiding transaction: ' + data.message);
+            }
+        })
+        .catch(error => {
+            alert('Error voiding transaction');
+        });
+    }
+}
+</script>
+{% endblock %}

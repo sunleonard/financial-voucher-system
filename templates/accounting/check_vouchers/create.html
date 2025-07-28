@@ -1,0 +1,377 @@
+{% extends "base.html" %}
+
+{% block title %}Create Check Voucher{% endblock %}
+{% block page_title %}Create Check Voucher{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-check me-2"></i>Create Check Voucher
+                </h5>
+            </div>
+            <div class="card-body">
+                <form method="POST" id="cvForm">
+                    <!-- Basic Information -->
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="transaction_date" class="form-label">Transaction Date <span class="text-danger">*</span></label>
+                            <input type="date" class="form-control" id="transaction_date" name="transaction_date" 
+                                   value="{{ date.today() }}" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="check_number" class="form-label">Check Number</label>
+                            <input type="text" class="form-control" id="check_number" name="check_number" 
+                                   placeholder="Check #123">
+                            <div class="form-text">Optional: Physical check number</div>
+                        </div>
+                    </div>
+
+                    <!-- VP Reference -->
+                    <div class="mb-3">
+                        <label for="vp_number" class="form-label">Link to Voucher Payable (VP)</label>
+                        <select class="form-select" id="vp_number" name="vp_number" onchange="loadVPDetails()">
+                            <option value="">Select existing VP to pay (optional)</option>
+                            {% for vp in open_vps %}
+                            <option value="{{ vp.number }}" data-payee="{{ vp.payee }}" 
+                                    data-amount="{{ vp.total_amount }}" data-payee-code="{{ vp.payee_code }}">
+                                {{ vp.number }} - {{ vp.payee }} (${{ "%.2f"|format(vp.total_amount) }})
+                            </option>
+                            {% endfor %}
+                        </select>
+                        <div class="form-text">Select a VP to automatically fill payee and amount details</div>
+                    </div>
+
+                    <!-- Payee Information -->
+                    <div class="row mb-3">
+                        <div class="col-md-4">
+                            <label for="payee_code" class="form-label">Payee Code <span class="text-danger">*</span></label>
+                            <select class="form-select" id="payee_code" name="payee_code" required>
+                                <option value="">Select Payee</option>
+                                {% for payee in payees %}
+                                <option value="{{ payee.code }}">{{ payee.code }} - {{ payee.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="total_amount" class="form-label">Payment Amount <span class="text-danger">*</span></label>
+                            <div class="input-group">
+                                <span class="input-group-text">$</span>
+                                <input type="number" class="form-control" id="total_amount" name="total_amount" 
+                                       step="0.01" min="0.01" required onchange="updateBalanceCheck()">
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="bank_account" class="form-label">Bank Account <span class="text-danger">*</span></label>
+                            <select class="form-select" id="bank_account" name="bank_account" required>
+                                <option value="">Select Bank Account</option>
+                                {% for bank in bank_accounts %}
+                                <option value="{{ bank.code }}">{{ bank.code }} - {{ bank.description }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Description -->
+                    <div class="mb-3">
+                        <label for="description" class="form-label">Description</label>
+                        <textarea class="form-control" id="description" name="description" rows="2" 
+                                  placeholder="Payment description..."></textarea>
+                    </div>
+
+                    <!-- Advanced Accounting Section -->
+                    <div class="card mb-3">
+                        <div class="card-header">
+                            <h6 class="mb-0">
+                                <i class="fas fa-calculator me-2"></i>Accounting Entries
+                                <small class="text-muted">(Optional: Advanced double-entry details)</small>
+                            </h6>
+                        </div>
+                        <div class="card-body">
+                            <!-- Credit/Debit Lines -->
+                            <div class="mb-3">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <label class="form-label mb-0">Credit/Debit Lines</label>
+                                    <button type="button" class="btn btn-sm btn-outline-primary" onclick="addCreditDebitLine()">
+                                        <i class="fas fa-plus me-1"></i>Add Line
+                                    </button>
+                                </div>
+                                
+                                <div id="creditDebitLines">
+                                    <!-- Credit/Debit lines will be added here dynamically -->
+                                </div>
+                            </div>
+
+                            <!-- Balance Check -->
+                            <div class="alert alert-info" id="balanceAlert" style="display: none;">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <span>
+                                        <i class="fas fa-info-circle me-2"></i>
+                                        <strong>Balance Check:</strong>
+                                    </span>
+                                    <span id="balanceStatus"></span>
+                                </div>
+                                <div class="mt-2">
+                                    <small>
+                                        Total Amount: $<span id="headerTotal">0.00</span> | 
+                                        Line Items Total: $<span id="linesTotal">0.00</span> | 
+                                        Difference: $<span id="balanceDiff">0.00</span>
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Hidden fields for counting lines -->
+                    <input type="hidden" id="cd_line_count" name="cd_line_count" value="0">
+                    
+                    <!-- Form Actions -->
+                    <div class="d-flex gap-2 mt-4">
+                        <button type="submit" class="btn btn-success">
+                            <i class="fas fa-check me-2"></i>Create Check Voucher
+                        </button>
+                        <a href="{{ url_for('accounting.list_check_vouchers') }}" class="btn btn-secondary">
+                            <i class="fas fa-times me-2"></i>Cancel
+                        </a>
+                        <button type="button" class="btn btn-outline-info" onclick="validateBalance()">
+                            <i class="fas fa-calculator me-2"></i>Check Balance
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Help Panel -->
+    <div class="col-md-4">
+        <!-- What is CV Card -->
+        <div class="card">
+            <div class="card-header">
+                <h6 class="mb-0">
+                    <i class="fas fa-question-circle me-2"></i>What is a Check Voucher?
+                </h6>
+            </div>
+            <div class="card-body">
+                <p class="small mb-3">
+                    A <strong>Check Voucher (CV)</strong> records actual payments made to vendors, 
+                    suppliers, or service providers. It represents money leaving your company.
+                </p>
+                
+                <h6 class="text-success mb-2">Accounting Impact:</h6>
+                <div class="row small">
+                    <div class="col-6">
+                        <div class="text-center p-2 bg-light rounded">
+                            <strong>DEBIT</strong><br>
+                            <span class="text-warning">Payable ↓</span><br>
+                            <small class="text-muted">Debt decreases</small>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="text-center p-2 bg-light rounded">
+                            <strong>CREDIT</strong><br>
+                            <span class="text-danger">Cash ↓</span><br>
+                            <small class="text-muted">Money out</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Workflow Card -->
+        <div class="card mt-3">
+            <div class="card-header">
+                <h6 class="mb-0">
+                    <i class="fas fa-workflow me-2"></i>Payment Workflow
+                </h6>
+            </div>
+            <div class="card-body">
+                <ol class="small mb-0">
+                    <li class="mb-2">
+                        <strong>VP Created</strong><br>
+                        <span class="text-muted">Payment obligation recorded</span>
+                    </li>
+                    <li class="mb-2">
+                        <strong>CV Created</strong><br>
+                        <span class="text-muted">Actual payment made (this form)</span>
+                    </li>
+                    <li class="mb-2">
+                        <strong>VP Paid</strong><br>
+                        <span class="text-muted">Obligation marked as satisfied</span>
+                    </li>
+                    <li class="mb-0">
+                        <strong>Bank Updated</strong><br>
+                        <span class="text-muted">Cash balance adjusted</span>
+                    </li>
+                </ol>
+            </div>
+        </div>
+
+        <!-- Quick Tips -->
+        <div class="card mt-3">
+            <div class="card-header">
+                <h6 class="mb-0">
+                    <i class="fas fa-lightbulb me-2"></i>Quick Tips
+                </h6>
+            </div>
+            <div class="card-body">
+                <ul class="small mb-0">
+                    <li class="mb-2">
+                        <strong>Link to VP:</strong> Select an existing VP to automatically fill details
+                    </li>
+                    <li class="mb-2">
+                        <strong>Bank Account:</strong> Choose the correct bank account for the payment
+                    </li>
+                    <li class="mb-2">
+                        <strong>Check Number:</strong> Optional but useful for tracking physical checks
+                    </li>
+                    <li class="mb-0">
+                        <strong>Balance:</strong> Advanced entries should balance (debits = credits)
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let creditDebitLineCount = 0;
+
+function loadVPDetails() {
+    const vpSelect = document.getElementById('vp_number');
+    const selectedOption = vpSelect.options[vpSelect.selectedIndex];
+    
+    if (selectedOption.value) {
+        // Auto-fill from selected VP
+        document.getElementById('payee_code').value = selectedOption.dataset.payeeCode || '';
+        document.getElementById('total_amount').value = selectedOption.dataset.amount || '';
+        document.getElementById('description').value = `Payment for ${selectedOption.value}`;
+        
+        updateBalanceCheck();
+    }
+}
+
+function addCreditDebitLine() {
+    const container = document.getElementById('creditDebitLines');
+    const lineDiv = document.createElement('div');
+    lineDiv.className = 'border rounded p-3 mb-2';
+    lineDiv.id = `cd_line_${creditDebitLineCount}`;
+    
+    lineDiv.innerHTML = `
+        <div class="row">
+            <div class="col-md-3">
+                <label class="form-label">Account Code</label>
+                <input type="text" class="form-control" name="cd_acct_code_${creditDebitLineCount}" 
+                       placeholder="e.g., 5000" onchange="updateBalanceCheck()">
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Description</label>
+                <input type="text" class="form-control" name="cd_acct_desc_${creditDebitLineCount}" 
+                       placeholder="Account description">
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Amount</label>
+                <input type="number" class="form-control" name="cd_amount_${creditDebitLineCount}" 
+                       step="0.01" min="0" onchange="updateBalanceCheck()">
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Type</label>
+                <select class="form-select" name="cd_acct_type_${creditDebitLineCount}">
+                    <option value="debit">Debit</option>
+                    <option value="credit">Credit</option>
+                </select>
+            </div>
+            <div class="col-md-1">
+                <label class="form-label">&nbsp;</label>
+                <button type="button" class="btn btn-outline-danger btn-sm d-block" 
+                        onclick="removeCreditDebitLine(${creditDebitLineCount})">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </div>
+        </div>
+    `;
+    
+    container.appendChild(lineDiv);
+    creditDebitLineCount++;
+    
+    // Update hidden field
+    document.getElementById('cd_line_count').value = creditDebitLineCount;
+    
+    updateBalanceCheck();
+}
+
+function removeCreditDebitLine(lineId) {
+    const lineDiv = document.getElementById(`cd_line_${lineId}`);
+    if (lineDiv) {
+        lineDiv.remove();
+        updateBalanceCheck();
+    }
+}
+
+function updateBalanceCheck() {
+    const headerAmount = parseFloat(document.getElementById('total_amount').value) || 0;
+    let linesTotal = 0;
+    
+    // Calculate total from credit/debit lines
+    const cdLines = document.querySelectorAll('#creditDebitLines input[name*="cd_amount_"]');
+    cdLines.forEach(input => {
+        linesTotal += parseFloat(input.value) || 0;
+    });
+    
+    const difference = Math.abs(headerAmount - linesTotal);
+    
+    // Update display
+    document.getElementById('headerTotal').textContent = headerAmount.toFixed(2);
+    document.getElementById('linesTotal').textContent = linesTotal.toFixed(2);
+    document.getElementById('balanceDiff').textContent = difference.toFixed(2);
+    
+    const balanceAlert = document.getElementById('balanceAlert');
+    const balanceStatus = document.getElementById('balanceStatus');
+    
+    if (cdLines.length > 0) {
+        balanceAlert.style.display = 'block';
+        
+        if (difference < 0.01) {
+            balanceAlert.className = 'alert alert-success';
+            balanceStatus.innerHTML = '<i class="fas fa-check-circle text-success"></i> Balanced';
+        } else {
+            balanceAlert.className = 'alert alert-warning';
+            balanceStatus.innerHTML = '<i class="fas fa-exclamation-triangle text-warning"></i> Out of Balance';
+        }
+    } else {
+        balanceAlert.style.display = 'none';
+    }
+}
+
+function validateBalance() {
+    updateBalanceCheck();
+    
+    const headerAmount = parseFloat(document.getElementById('total_amount').value) || 0;
+    const cdLines = document.querySelectorAll('#creditDebitLines input[name*="cd_amount_"]');
+    
+    if (cdLines.length === 0) {
+        alert('No detailed entries found. The system will create automatic entries.');
+        return;
+    }
+    
+    let linesTotal = 0;
+    cdLines.forEach(input => {
+        linesTotal += parseFloat(input.value) || 0;
+    });
+    
+    const difference = Math.abs(headerAmount - linesTotal);
+    
+    if (difference < 0.01) {
+        alert('✅ Entries are balanced! Ready to submit.');
+    } else {
+        alert(`⚠️ Entries are out of balance by $${difference.toFixed(2)}. Please review your entries.`);
+    }
+}
+
+// Initialize
+document.addEventListener('DOMContentLoaded', function() {
+    updateBalanceCheck();
+});
+</script>
+{% endblock %}

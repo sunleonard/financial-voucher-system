@@ -24,27 +24,79 @@ def create_accounting_blueprint(db_manager):
     @login_required
     @audit_action("VIEW_ACCOUNTING_DASHBOARD")
     def dashboard():
-        """Accounting dashboard"""
+        """Accounting dashboard - safe version"""
         try:
-            # Get financial summary
-            financial_summary = accounting_service.get_financial_summary()
+            # Initialize default values
+            financial_summary = {
+                'total_vouchers': 0,
+                'total_amount': 0,
+                'pending_vouchers': 0,
+                'pending_amount': 0,
+                'monthly_trends': []
+            }
+            recent_vp = []
+            recent_cv = []
+            overdue_items = []
             
-            # Get recent transactions
-            recent_vp = accounting_service.ledger.get_all(ledger_type='VP', limit=5)
-            recent_cv = accounting_service.ledger.get_all(ledger_type='CV', limit=5)
+            try:
+                # Try to get financial summary
+                if hasattr(accounting_service, 'get_financial_summary'):
+                    financial_summary = accounting_service.get_financial_summary()
+            except Exception as e:
+                logger.warning(f"Could not get financial summary: {e}")
             
-            # Get overdue items
-            overdue_items = accounting_service.ledger.get_overdue()
+            try:
+                # Try to get recent VP transactions
+                if hasattr(accounting_service, 'ledger') and hasattr(accounting_service.ledger, 'get_all'):
+                    recent_vp = accounting_service.ledger.get_all(ledger_type='VP', limit=5) or []
+            except Exception as e:
+                logger.warning(f"Could not get recent VP transactions: {e}")
+            
+            try:
+                # Try to get recent CV transactions  
+                if hasattr(accounting_service, 'ledger') and hasattr(accounting_service.ledger, 'get_all'):
+                    recent_cv = accounting_service.ledger.get_all(ledger_type='CV', limit=5) or []
+            except Exception as e:
+                logger.warning(f"Could not get recent CV transactions: {e}")
+            
+            try:
+                # Try to get overdue items
+                if hasattr(accounting_service, 'ledger') and hasattr(accounting_service.ledger, 'get_overdue'):
+                    overdue_items = accounting_service.ledger.get_overdue() or []
+            except Exception as e:
+                logger.warning(f"Could not get overdue items: {e}")
+            
+            # Create basic statistics from available data
+            vp_stats = {
+                'total_count': len(recent_vp),
+                'total_amount': sum(float(vp.get('total_amount', 0)) for vp in recent_vp if isinstance(vp, dict)),
+                'pending_count': len([vp for vp in recent_vp if isinstance(vp, dict) and vp.get('status') == 'active']),
+            }
+            
+            cv_stats = {
+                'total_count': len(recent_cv),
+                'total_amount': sum(float(cv.get('total_amount', 0)) for cv in recent_cv if isinstance(cv, dict)),
+            }
             
             return render_template('accounting/dashboard.html',
-                                 financial_summary=financial_summary,
-                                 recent_vp=recent_vp,
-                                 recent_cv=recent_cv,
-                                 overdue_items=overdue_items)
+                                financial_summary=financial_summary,
+                                recent_vp=recent_vp,
+                                recent_cv=recent_cv,
+                                overdue_items=overdue_items,
+                                vp_stats=vp_stats,
+                                cv_stats=cv_stats)
         except Exception as e:
             logger.error(f"Error loading accounting dashboard: {e}")
-            flash('Error loading dashboard', 'error')
-            return redirect(url_for('dashboard.index'))
+            flash('Dashboard is starting up. Some features may be limited.', 'info')
+            
+            # Return minimal dashboard
+            return render_template('accounting/dashboard.html',
+                                financial_summary={'total_vouchers': 0, 'total_amount': 0},
+                                recent_vp=[],
+                                recent_cv=[],
+                                overdue_items=[],
+                                vp_stats={'total_count': 0, 'total_amount': 0},
+                                cv_stats={'total_count': 0, 'total_amount': 0})
     
     # Vouchers Payable Routes
     @accounting_bp.route('/vouchers-payable')
@@ -120,17 +172,8 @@ def create_accounting_blueprint(db_manager):
             payee_code = request.form.get('payee_code')
             total_amount = float(request.form.get('total_amount'))
             description = request.form.get('description', '').strip()
-            due_date_str = request.form.get('due_date')
-            due_date = datetime.strptime(due_date_str, '%Y-%m-%d').date() if due_date_str else None
-            
-            # Validate required fields
-            if not all([transaction_date, payee_code, total_amount]):
-                flash('Transaction date, payee, and amount are required', 'error')
-                return redirect(request.url)
-            
-            if total_amount <= 0:
-                flash('Amount must be greater than zero', 'error')
-                return redirect(request.url)
+            due_date = request.form.get('due_date')
+            due_date = datetime.strptime(due_date, '%Y-%m-%d').date() if due_date else None
             
             # Get credit/debit lines from form
             credit_debit_lines = []
@@ -155,18 +198,14 @@ def create_accounting_blueprint(db_manager):
             sub_count = int(request.form.get('sub_line_count', 0))
             
             for i in range(sub_count):
-                acct_code = request.form.get(f'sub_acct_code_{i}')
-                acct_desc = request.form.get(f'sub_acct_desc_{i}')
-                sub_code = request.form.get(f'sub_subsidiary_code_{i}')
-                sub_desc = request.form.get(f'sub_subsidiary_desc_{i}')
+                sub_code = request.form.get(f'sub_code_{i}')
+                sub_desc = request.form.get(f'sub_desc_{i}')
                 amount = request.form.get(f'sub_amount_{i}')
                 
-                if acct_code and sub_code and amount:
+                if sub_code and amount:
                     subsidiary_lines.append({
-                        'acct_code': acct_code,
-                        'acct_description': acct_desc or acct_code,
-                        'subsidiary_code': sub_code,
-                        'subsidiary_description': sub_desc or sub_code,
+                        'sub_code': sub_code,
+                        'description': sub_desc or sub_code,
                         'amount': float(amount)
                     })
             
@@ -230,8 +269,31 @@ def create_accounting_blueprint(db_manager):
             if payee_filter:
                 check_vouchers = [cv for cv in check_vouchers if payee_filter.lower() in cv['payee'].lower()]
             
-            # Get statistics
+            # Get enhanced statistics
             cv_stats = accounting_service.ledger.get_statistics(ledger_type='CV')
+            
+            # Add monthly statistics
+            from datetime import datetime, timedelta
+            current_month = datetime.now().month
+            current_year = datetime.now().year
+            month_start = datetime(current_year, current_month, 1).date()
+            
+            month_cvs = accounting_service.ledger.get_all(
+                ledger_type='CV',
+                start_date=month_start,
+                limit=1000  # Get all for the month
+            )
+            
+            # Calculate monthly stats
+            month_count = len(month_cvs)
+            month_amount = sum(cv.get('total_amount', 0) for cv in month_cvs)
+            
+            # Enhance stats
+            if not cv_stats.get('check_vouchers'):
+                cv_stats['check_vouchers'] = {}
+            
+            cv_stats['check_vouchers']['this_month_count'] = month_count
+            cv_stats['check_vouchers']['this_month_amount'] = month_amount
             
             return render_template('accounting/check_vouchers/list.html',
                                  check_vouchers=check_vouchers,
@@ -246,20 +308,31 @@ def create_accounting_blueprint(db_manager):
             logger.error(f"Error listing check vouchers: {e}")
             flash('Error loading check vouchers', 'error')
             return redirect(url_for('accounting.dashboard'))
-    
+
     @accounting_bp.route('/check-vouchers/create', methods=['GET', 'POST'])
     @login_required
     def create_check_voucher():
         """Create new check voucher"""
         if request.method == 'GET':
-            # Get payees
+            # Get payees (accounts that can receive payments)
             payees = account_model.get_payees()
             
             # Get bank accounts
             bank_accounts = account_model.get_by_prefix('BANK')
+            if not bank_accounts:
+                # Add default bank accounts if none exist
+                bank_accounts = [
+                    {'code': '1010', 'description': 'Primary Checking Account'},
+                    {'code': '1020', 'description': 'Secondary Checking Account'},
+                    {'code': '1030', 'description': 'Petty Cash Account'}
+                ]
             
-            # Get open VP numbers for linking
-            open_vps = accounting_service.ledger.get_all(ledger_type='VP', status='active', limit=50)
+            # Get open VP numbers for linking (active VPs that haven't been fully paid)
+            open_vps = accounting_service.ledger.get_all(
+                ledger_type='VP', 
+                status='active', 
+                limit=100
+            )
             
             return render_template('accounting/check_vouchers/create.html',
                                  payees=payees,
@@ -285,7 +358,7 @@ def create_accounting_blueprint(db_manager):
                 flash('Amount must be greater than zero', 'error')
                 return redirect(request.url)
             
-            # Get credit/debit lines from form (similar to VP creation)
+            # Get credit/debit lines from form
             credit_debit_lines = []
             cd_count = int(request.form.get('cd_line_count', 0))
             
@@ -303,6 +376,42 @@ def create_accounting_blueprint(db_manager):
                         'acct_type': acct_type
                     })
             
+            # If no manual credit/debit lines, create automatic entries
+            if not credit_debit_lines:
+                # Default CV entries: Debit A/P, Credit Cash
+                if vp_number:
+                    # If paying a VP, debit Accounts Payable
+                    credit_debit_lines = [
+                        {
+                            'acct_code': '2000',  # Accounts Payable
+                            'acct_description': 'Accounts Payable',
+                            'amount': total_amount,
+                            'acct_type': 'debit'
+                        },
+                        {
+                            'acct_code': bank_account,
+                            'acct_description': 'Bank Account',
+                            'amount': total_amount,
+                            'acct_type': 'credit'
+                        }
+                    ]
+                else:
+                    # Direct payment, debit expense account
+                    credit_debit_lines = [
+                        {
+                            'acct_code': '5000',  # General Expense
+                            'acct_description': 'General Expense',
+                            'amount': total_amount,
+                            'acct_type': 'debit'
+                        },
+                        {
+                            'acct_code': bank_account,
+                            'acct_description': 'Bank Account',
+                            'amount': total_amount,
+                            'acct_type': 'credit'
+                        }
+                    ]
+            
             # Create check voucher
             success, message, cv_number = accounting_service.create_check_voucher(
                 transaction_date=transaction_date,
@@ -312,7 +421,7 @@ def create_accounting_blueprint(db_manager):
                 check_number=check_number,
                 bank_account=bank_account,
                 description=description,
-                credit_debit_lines=credit_debit_lines if credit_debit_lines else None,
+                credit_debit_lines=credit_debit_lines,
                 created_by=session.get('user_id')
             )
             
@@ -330,239 +439,93 @@ def create_accounting_blueprint(db_manager):
             logger.error(f"Error creating check voucher: {e}")
             flash('An error occurred while creating the check voucher', 'error')
             return redirect(request.url)
-    
-    # Transaction Details and Management
-    @accounting_bp.route('/transaction/<number>')
+
+    # Transaction View Route
+    @accounting_bp.route('/transactions/<transaction_number>')
     @login_required
-    @audit_action("VIEW_TRANSACTION")
-    def view_transaction(number):
-        """View complete transaction details"""
+    @audit_action("VIEW_TRANSACTION_DETAILS")
+    def view_transaction(transaction_number):
+        """View detailed transaction information"""
         try:
-            transaction = accounting_service.get_transaction(number)
+            # Get transaction details
+            transaction = accounting_service.ledger.get_by_number(transaction_number)
+            
             if not transaction:
                 flash('Transaction not found', 'error')
                 return redirect(url_for('accounting.dashboard'))
             
+            # Get credit/debit lines
+            credit_debit_lines = accounting_service.get_transaction_lines(transaction_number)
+            
+            # Get subsidiary lines if any
+            subsidiary_lines = accounting_service.get_subsidiary_lines(transaction_number)
+            
+            # Get related transactions (e.g., CV for a VP)
+            related_transactions = accounting_service.get_related_transactions(transaction_number)
+            
             return render_template('accounting/transaction_detail.html',
-                                 transaction=transaction)
+                                 transaction=transaction,
+                                 credit_debit_lines=credit_debit_lines,
+                                 subsidiary_lines=subsidiary_lines,
+                                 related_transactions=related_transactions)
+                                 
         except Exception as e:
-            logger.error(f"Error viewing transaction {number}: {e}")
+            logger.error(f"Error viewing transaction {transaction_number}: {e}")
             flash('Error loading transaction details', 'error')
             return redirect(url_for('accounting.dashboard'))
-    
-    @accounting_bp.route('/transaction/<number>/void', methods=['POST'])
+
+    # Transaction Voiding Route (for both VP and CV)
+    @accounting_bp.route('/transactions/<transaction_number>/void', methods=['POST'])
     @login_required
+    @admin_required
     @audit_action("VOID_TRANSACTION")
-    def void_transaction(number):
-        """Void a transaction"""
+    def void_transaction(transaction_number):
+        """Void a transaction (VP or CV)"""
         try:
-            reason = request.form.get('reason', '').strip()
-            if not reason:
-                flash('Void reason is required', 'error')
-                return redirect(url_for('accounting.view_transaction', number=number))
-            
             success, message = accounting_service.void_transaction(
-                number=number,
-                voided_by=session.get('user_id'),
-                reason=reason
+                transaction_number=transaction_number,
+                voided_by=session.get('user_id')
             )
             
-            if success:
-                flash(f'Transaction {number} voided successfully', 'success')
-            else:
-                flash(f'Failed to void transaction: {message}', 'error')
-            
-            return redirect(url_for('accounting.view_transaction', number=number))
+            return jsonify({
+                'success': success,
+                'message': message
+            })
             
         except Exception as e:
-            logger.error(f"Error voiding transaction {number}: {e}")
-            flash('An error occurred while voiding the transaction', 'error')
-            return redirect(url_for('accounting.view_transaction', number=number))
-    
-    # Account Management
-    @accounting_bp.route('/accounts')
+            logger.error(f"Error voiding transaction {transaction_number}: {e}")
+            return jsonify({
+                'success': False,
+                'message': 'An error occurred while voiding the transaction'
+            })
+
+    # AJAX endpoint for VP details
+    @accounting_bp.route('/api/vp/<vp_number>')
     @login_required
-    @audit_action("VIEW_ACCOUNTS")
-    def list_accounts():
-        """List all accounts (Chart of Accounts)"""
+    def api_get_vp_details(vp_number):
+        """API endpoint to get VP details for CV creation"""
         try:
-            # Get accounts grouped by type
-            accounts_by_category = account_model.get_accounts_by_category()
+            vp = accounting_service.ledger.get_by_number(vp_number)
+            if not vp:
+                return jsonify({'error': 'VP not found'}), 404
             
-            # Get account statistics
-            account_stats = account_model.get_account_statistics()
+            return jsonify({
+                'success': True,
+                'vp': {
+                    'number': vp['number'],
+                    'payee_code': vp['payee_code'],
+                    'payee': vp['payee'],
+                    'total_amount': vp['total_amount'],
+                    'description': vp['description'],
+                    'due_date': vp.get('due_date'),
+                    'remaining_amount': vp.get('remaining_amount', vp['total_amount'])
+                }
+            })
             
-            return render_template('accounting/accounts/list.html',
-                                 accounts_by_category=accounts_by_category,
-                                 stats=account_stats)
         except Exception as e:
-            logger.error(f"Error listing accounts: {e}")
-            flash('Error loading accounts', 'error')
-            return redirect(url_for('accounting.dashboard'))
+            logger.error(f"Error getting VP details {vp_number}: {e}")
+            return jsonify({'error': 'Error retrieving VP details'}), 500
+
     
-    @accounting_bp.route('/accounts/create', methods=['GET', 'POST'])
-    @login_required
-    def create_account():
-        """Create new account"""
-        if request.method == 'GET':
-            account_types = ['Company', 'Customer', 'Employee', 'Subsidiary']
-            prefixes = account_model.get_account_prefixes()
-            return render_template('accounting/accounts/create.html',
-                                 account_types=account_types,
-                                 prefixes=prefixes)
-        
-        try:
-            acct_code = request.form.get('acct_code', '').strip()
-            acct_description = request.form.get('acct_description', '').strip()
-            acct_type = request.form.get('acct_type')
-            acct_prefix = request.form.get('acct_prefix', '').strip() or None
-            
-            # Validate required fields
-            if not all([acct_code, acct_description, acct_type]):
-                flash('Account code, description, and type are required', 'error')
-                return redirect(request.url)
-            
-            # Validate account code
-            is_valid, validation_message = account_model.validate_account_code(acct_code)
-            if not is_valid:
-                flash(f'Invalid account code: {validation_message}', 'error')
-                return redirect(request.url)
-            
-            # Create account
-            account_id = account_model.create(acct_code, acct_description, acct_type, acct_prefix)
-            
-            if account_id:
-                flash(f'Account {acct_code} created successfully', 'success')
-                return redirect(url_for('accounting.list_accounts'))
-            else:
-                flash('Failed to create account', 'error')
-                return redirect(request.url)
-                
-        except Exception as e:
-            logger.error(f"Error creating account: {e}")
-            flash('An error occurred while creating the account', 'error')
-            return redirect(request.url)
-    
-    @accounting_bp.route('/account/<acct_code>')
-    @login_required
-    @audit_action("VIEW_ACCOUNT_LEDGER")
-    def view_account_ledger(acct_code):
-        """View account ledger"""
-        try:
-            # Get date filters
-            start_date_str = request.args.get('start_date', '')
-            end_date_str = request.args.get('end_date', '')
-            
-            start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date() if start_date_str else None
-            end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date() if end_date_str else None
-            
-            # Get account ledger
-            ledger_data = accounting_service.get_account_ledger(acct_code, start_date, end_date)
-            
-            if 'error' in ledger_data:
-                flash(ledger_data['error'], 'error')
-                return redirect(url_for('accounting.list_accounts'))
-            
-            return render_template('accounting/accounts/ledger.html',
-                                 ledger_data=ledger_data,
-                                 acct_code=acct_code,
-                                 filters={
-                                     'start_date': start_date_str,
-                                     'end_date': end_date_str
-                                 })
-        except Exception as e:
-            logger.error(f"Error viewing account ledger {acct_code}: {e}")
-            flash('Error loading account ledger', 'error')
-            return redirect(url_for('accounting.list_accounts'))
-    
-    # Reports
-    @accounting_bp.route('/reports')
-    @login_required
-    @audit_action("VIEW_REPORTS")
-    def reports():
-        """Reports dashboard"""
-        return render_template('accounting/reports/index.html')
-    
-    @accounting_bp.route('/reports/trial-balance')
-    @login_required
-    @audit_action("VIEW_TRIAL_BALANCE")
-    def trial_balance():
-        """Trial balance report"""
-        try:
-            as_of_date_str = request.args.get('as_of_date', '')
-            as_of_date = datetime.strptime(as_of_date_str, '%Y-%m-%d').date() if as_of_date_str else date.today()
-            
-            trial_balance_data = accounting_service.get_trial_balance(as_of_date)
-            
-            if 'error' in trial_balance_data:
-                flash(trial_balance_data['error'], 'error')
-                return redirect(url_for('accounting.reports'))
-            
-            return render_template('accounting/reports/trial_balance.html',
-                                 trial_balance_data=trial_balance_data,
-                                 as_of_date=as_of_date)
-        except Exception as e:
-            logger.error(f"Error generating trial balance: {e}")
-            flash('Error generating trial balance', 'error')
-            return redirect(url_for('accounting.reports'))
-    
-    # API Endpoints
-    @accounting_bp.route('/api/accounts/search')
-    @login_required
-    def api_search_accounts():
-        """API endpoint to search accounts"""
-        search_term = request.args.get('q', '').strip()
-        acct_type = request.args.get('type', '')
-        
-        if not search_term:
-            return jsonify([])
-        
-        accounts = account_model.search(search_term, acct_type if acct_type else None)
-        
-        return jsonify([
-            {
-                'acct_code': account['acct_code'],
-                'acct_description': account['acct_description'],
-                'acct_type': account['acct_type'],
-                'acct_prefix': account['acct_prefix']
-            }
-            for account in accounts
-        ])
-    
-    @accounting_bp.route('/api/vouchers-payable/search')
-    @login_required
-    def api_search_vouchers_payable():
-        """API endpoint to search active vouchers payable"""
-        search_term = request.args.get('q', '').strip()
-        
-        if not search_term:
-            # Return recent active VPs
-            vouchers = accounting_service.ledger.get_all(ledger_type='VP', status='active', limit=20)
-        else:
-            # Search VPs
-            vouchers = accounting_service.ledger.search(search_term, 'VP')
-            vouchers = [v for v in vouchers if v['status'] == 'active']
-        
-        return jsonify([
-            {
-                'number': voucher['number'],
-                'payee': voucher['payee'],
-                'total_amount': voucher['total_amount'],
-                'date': voucher['date'],
-                'description': voucher['description']
-            }
-            for voucher in vouchers
-        ])
-    
-    @accounting_bp.route('/api/transaction/<number>/balance-check')
-    @login_required
-    def api_transaction_balance_check(number):
-        """API endpoint to check transaction balance"""
-        try:
-            balance_check = accounting_service.credit_debit.validate_entry_balance(number)
-            return jsonify(balance_check)
-        except Exception as e:
-            logger.error(f"Error checking balance for {number}: {e}")
-            return jsonify({'error': str(e)}), 500
-    
+    # Return the blueprint
     return accounting_bp

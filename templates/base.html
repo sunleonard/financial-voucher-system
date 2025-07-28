@@ -1,12 +1,20 @@
-<!-- templates/base.html -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Financial Voucher Management System{% endblock %}</title>
+    
+    <!-- Bootstrap CSS -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <!-- Chart.js (for dashboard) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    
+    <!-- Custom CSS -->
+    <link href="{{ url_for('static', filename='css/main.css') }}" rel="stylesheet">
+    
     <style>
         :root {
             --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -15,384 +23,572 @@
             --danger-color: #dc3545;
             --warning-color: #ffc107;
             --info-color: #0dcaf0;
+            --sidebar-width: 260px;
         }
-        
+
+        /* Fixed Sidebar with Proper Scrolling */
         .sidebar {
-            min-height: 100vh;
-            background: var(--primary-gradient);
             position: fixed;
             top: 0;
             left: 0;
+            height: 100vh;
+            width: var(--sidebar-width);
+            background: var(--primary-gradient);
             z-index: 1000;
             overflow-y: auto;
+            overflow-x: hidden;
+            box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+            display: flex;
+            flex-direction: column;
         }
-        
-        .nav-link {
-            color: white !important;
-            transition: all 0.3s ease;
-            margin: 2px 0;
-            border-radius: 8px;
+
+        /* Sidebar Header */
+        .sidebar-header {
+            padding: 1rem;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            text-align: center;
+            flex-shrink: 0; /* Prevent shrinking */
         }
-        
-        .nav-link:hover {
-            background-color: rgba(255,255,255,0.1);
-            transform: translateX(5px);
-        }
-        
-        .nav-link.active {
-            background-color: rgba(255,255,255,0.2);
-        }
-        
-        .nav-section-divider {
-            color: rgba(255,255,255,0.6);
-            font-size: 0.75rem;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            margin: 1rem 0 0.5rem 0;
-            padding: 0 1rem;
-        }
-        
-        .main-content {
-            margin-left: 250px;
-            background-color: #f8f9fa;
-            min-height: 100vh;
-        }
-        
-        .card {
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            border: none;
-            border-radius: 12px;
-        }
-        
-        .btn-primary {
-            background: var(--primary-gradient);
-            border: none;
-            border-radius: 8px;
-        }
-        
-        .btn-primary:hover {
-            background: linear-gradient(135deg, #5a67d8 0%, #6c5b7b 100%);
-            transform: translateY(-1px);
-        }
-        
-        .alert {
-            border: none;
-            border-radius: 10px;
-        }
-        
-        .table {
-            background: white;
-            border-radius: 10px;
-            overflow: hidden;
-        }
-        
-        .form-control:focus {
-            border-color: #667eea;
-            box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
-        }
-        
-        .user-avatar {
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            background: var(--primary-gradient);
+
+        .sidebar-brand {
+            color: white;
+            text-decoration: none;
+            font-weight: bold;
+            font-size: 1.1rem;
             display: flex;
             align-items: center;
             justify-content: center;
-            color: white;
-            font-weight: bold;
         }
-        
-        .stats-card {
-            background: white;
-            border-radius: 12px;
-            padding: 1.5rem;
-            text-align: center;
-            transition: transform 0.2s;
+
+        .sidebar-brand:hover {
+            color: rgba(255,255,255,0.8);
         }
-        
-        .stats-card:hover {
-            transform: translateY(-2px);
+
+        /* Navigation Container - Scrollable */
+        .sidebar-nav {
+            flex: 1;
+            overflow-y: auto;
+            padding: 0.5rem 0;
         }
-        
-        .dropdown-submenu {
+
+        /* Navigation Sections */
+        .nav-section {
+            margin: 0.5rem 0;
+        }
+
+        .nav-section-header {
+            color: rgba(255,255,255,0.7);
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            font-weight: 600;
+            letter-spacing: 1px;
+            padding: 0.5rem 1rem;
+            margin: 0.5rem 0;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+
+        /* Navigation Links */
+        .nav-link {
+            color: white !important;
+            transition: all 0.3s ease;
+            margin: 1px 6px;
+            border-radius: 6px;
+            padding: 0.6rem 1rem;
+            display: flex;
+            align-items: center;
+            text-decoration: none;
             position: relative;
+            font-size: 0.9rem;
         }
-        
-        .dropdown-submenu .dropdown-menu {
+
+        .nav-link:hover {
+            background-color: rgba(255,255,255,0.15);
+            transform: translateX(3px);
+            color: white !important;
+        }
+
+        .nav-link.active {
+            background-color: rgba(255,255,255,0.2);
+            border-left: 3px solid white;
+        }
+
+        .nav-link i {
+            width: 18px;
+            text-align: center;
+            font-size: 0.9rem;
+        }
+
+        .nav-link .badge {
+            margin-left: auto;
+            font-size: 0.6rem;
+        }
+
+        .nav-link small {
+            font-size: 0.65rem;
+            opacity: 0.8;
+        }
+
+        /* Dropdown menus in sidebar */
+        .dropdown-menu {
+            background: rgba(255,255,255,0.95);
+            border: none;
+            border-radius: 8px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+        }
+
+        .dropdown-item {
+            color: #333 !important;
+            padding: 0.4rem 1rem;
+            border-radius: 6px;
+            margin: 2px 4px;
+            font-size: 0.85rem;
+        }
+
+        .dropdown-item:hover {
+            background-color: rgba(102, 126, 234, 0.1);
+            color: #667eea !important;
+        }
+
+        /* User Info Panel - Fixed at Bottom */
+        .user-info-panel {
+            background: rgba(255,255,255,0.1);
+            border-radius: 8px;
+            padding: 0.8rem;
+            margin: 0.5rem;
+            color: white;
+            flex-shrink: 0; /* Prevent shrinking */
+            border-top: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .user-avatar {
+            width: 35px;
+            height: 35px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 1rem;
+        }
+
+        /* Main content area */
+        .main-content {
+            margin-left: var(--sidebar-width);
+            min-height: 100vh;
+            background-color: #f8f9fa;
+        }
+
+        /* Top navbar */
+        .top-navbar {
+            background: white;
+            border-bottom: 1px solid #dee2e6;
+            padding: 1rem 1.5rem;
+            position: sticky;
             top: 0;
-            left: 100%;
-            margin-top: -1px;
+            z-index: 999;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
-        
+
+        /* Mobile responsiveness */
         @media (max-width: 768px) {
             .sidebar {
                 transform: translateX(-100%);
+                transition: transform 0.3s ease;
             }
+            
+            .sidebar.mobile-open {
+                transform: translateX(0);
+            }
+            
             .main-content {
                 margin-left: 0;
             }
+            
+            .mobile-toggle {
+                display: block !important;
+            }
+        }
+
+        @media (min-width: 769px) {
+            .mobile-toggle {
+                display: none !important;
+            }
+        }
+
+        /* Better scrollbar for sidebar */
+        .sidebar-nav::-webkit-scrollbar {
+            width: 5px;
+        }
+
+        .sidebar-nav::-webkit-scrollbar-track {
+            background: rgba(255,255,255,0.1);
+        }
+
+        .sidebar-nav::-webkit-scrollbar-thumb {
+            background: rgba(255,255,255,0.3);
+            border-radius: 3px;
+        }
+
+        .sidebar-nav::-webkit-scrollbar-thumb:hover {
+            background: rgba(255,255,255,0.5);
+        }
+
+        /* Mobile overlay */
+        .mobile-sidebar-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 999;
+            display: none;
+        }
+
+        .mobile-sidebar-overlay.show {
+            display: block;
         }
     </style>
+    
+    {% block extra_css %}{% endblock %}
 </head>
 <body>
     {% if session.user_id %}
     <!-- Sidebar -->
-    <div class="sidebar" style="width: 250px;">
-        <div class="p-3">
-            <h5 class="text-white mb-4">
+    <div class="sidebar" id="sidebar">
+        <!-- Sidebar Header -->
+        <div class="sidebar-header">
+            <a href="{{ url_for('dashboard.index') }}" class="sidebar-brand">
                 <i class="fas fa-calculator me-2"></i>
                 Financial System
-            </h5>
-            
+            </a>
+        </div>
+        
+        <!-- Scrollable Navigation Container -->
+        <div class="sidebar-nav">
             <nav class="nav flex-column">
-                <!-- Dashboard -->
-                <a class="nav-link {% if request.endpoint == 'dashboard.index' %}active{% endif %}" 
-                   href="{{ url_for('dashboard.index') }}">
-                    <i class="fas fa-tachometer-alt me-2"></i>
-                    Dashboard
-                </a>
-                
-                <!-- Accounting Section -->
-                <div class="nav-section-divider">ACCOUNTING</div>
-                
-                <a class="nav-link {% if request.endpoint == 'accounting.dashboard' %}active{% endif %}" 
-                   href="{{ url_for('accounting.dashboard') }}">
-                    <i class="fas fa-chart-line me-2"></i>
-                    Accounting Dashboard
-                </a>
-                
-                <div class="dropdown">
-                    <a class="nav-link dropdown-toggle {% if request.endpoint.startswith('accounting.') and ('voucher' in request.endpoint) %}active{% endif %}" 
-                       href="#" data-bs-toggle="dropdown">
-                        <i class="fas fa-file-invoice-dollar me-2"></i>
-                        Transactions
+                <!-- Dashboard Section -->
+                <div class="nav-section">
+                    <div class="nav-section-header">Dashboard</div>
+                    <a class="nav-link {{ 'active' if request.endpoint == 'dashboard.index' }}" 
+                       href="{{ url_for('dashboard.index') }}">
+                        <i class="fas fa-tachometer-alt me-2"></i>
+                        <span>Main Dashboard</span>
                     </a>
-                    <ul class="dropdown-menu bg-dark border-0">
-                        <li><a class="dropdown-item text-white" href="{{ url_for('accounting.list_vouchers_payable') }}">
-                            <i class="fas fa-file-invoice me-2"></i>Vouchers Payable
-                        </a></li>
-                        <li><a class="dropdown-item text-white" href="{{ url_for('accounting.create_voucher_payable') }}">
-                            <i class="fas fa-plus me-2"></i>New Voucher Payable
-                        </a></li>
-                        <li><hr class="dropdown-divider border-secondary"></li>
-                        <li><a class="dropdown-item text-white" href="{{ url_for('accounting.list_check_vouchers') }}">
-                            <i class="fas fa-check me-2"></i>Check Vouchers
-                        </a></li>
-                        <li><a class="dropdown-item text-white" href="{{ url_for('accounting.create_check_voucher') }}">
-                            <i class="fas fa-plus me-2"></i>New Check Voucher
-                        </a></li>
-                    </ul>
+                    
+                    <a class="nav-link {{ 'active' if request.endpoint == 'accounting.dashboard' }}" 
+                       href="{{ url_for('accounting.dashboard') }}">
+                        <i class="fas fa-chart-line me-2"></i>
+                        <span>Accounting Dashboard</span>
+                    </a>
                 </div>
-                
-                <a class="nav-link {% if request.endpoint == 'accounting.list_accounts' %}active{% endif %}" 
-                   href="{{ url_for('accounting.list_accounts') }}">
-                    <i class="fas fa-chart-pie me-2"></i>
-                    Chart of Accounts
-                </a>
-                
-                <div class="dropdown">
-                    <a class="nav-link dropdown-toggle {% if request.endpoint.startswith('accounting.reports') %}active{% endif %}" 
-                       href="#" data-bs-toggle="dropdown">
+
+                <!-- Financial Management Section -->
+                <div class="nav-section">
+                    <div class="nav-section-header">Financial Management</div>
+                    
+                    <!-- Vouchers Payable -->
+                    <a class="nav-link {{ 'active' if 'vouchers_payable' in request.endpoint or 'create_voucher_payable' in request.endpoint }}" 
+                       href="{{ url_for('accounting.list_vouchers_payable') }}">
+                        <i class="fas fa-file-invoice me-2"></i>
+                        <span>Vouchers Payable</span>
+                        <small class="text-muted d-block" style="margin-left: 22px;">Payment Obligations</small>
+                    </a>
+                    
+                    <!-- Check Vouchers -->
+                    <a class="nav-link {{ 'active' if 'check_vouchers' in request.endpoint or 'create_check_voucher' in request.endpoint }}" 
+                       href="{{ url_for('accounting.list_check_vouchers') }}">
+                        <i class="fas fa-check me-2"></i>
+                        <span>Check Vouchers</span>
+                        <small class="text-muted d-block" style="margin-left: 22px;">Payments Made</small>
+                    </a>
+                    
+                    <!-- Quick Create Dropdown -->
+                    <div class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" role="button" 
+                           data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="fas fa-plus-circle me-2"></i>
+                            <span>Quick Create</span>
+                        </a>
+                        <ul class="dropdown-menu">
+                            <li>
+                                <a class="dropdown-item" href="{{ url_for('accounting.create_voucher_payable') }}">
+                                    <i class="fas fa-file-invoice me-2"></i>New Voucher Payable
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item" href="{{ url_for('accounting.create_check_voucher') }}">
+                                    <i class="fas fa-check me-2"></i>New Check Voucher
+                                </a>
+                            </li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li>
+                                <a class="dropdown-item" href="#" style="opacity: 0.6;">
+                                    <i class="fas fa-building me-2"></i>New Company/Vendor
+                                    <span class="badge bg-secondary ms-1">Soon</span>
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Reports & Analytics -->
+                <div class="nav-section">
+                    <div class="nav-section-header">Reports & Analytics</div>
+                    
+                    <a class="nav-link" href="{{ url_for('accounting.list_vouchers_payable') }}">
                         <i class="fas fa-chart-bar me-2"></i>
-                        Reports
+                        <span>Financial Reports</span>
                     </a>
-                    <ul class="dropdown-menu bg-dark border-0">
-                        <li><a class="dropdown-item text-white" href="{{ url_for('accounting.trial_balance') }}">
-                            <i class="fas fa-balance-scale me-2"></i>Trial Balance
-                        </a></li>
-                        <li><a class="dropdown-item text-white" href="{{ url_for('accounting.reports') }}">
-                            <i class="fas fa-chart-bar me-2"></i>All Reports
-                        </a></li>
-                    </ul>
+                    
+                    <a class="nav-link" href="#" style="opacity: 0.6;">
+                        <i class="fas fa-balance-scale me-2"></i>
+                        <span>Trial Balance</span>
+                        <span class="badge bg-light text-dark ms-auto">Soon</span>
+                    </a>
+                    
+                    <a class="nav-link" href="#" style="opacity: 0.6;">
+                        <i class="fas fa-file-export me-2"></i>
+                        <span>Export Data</span>
+                        <span class="badge bg-light text-dark ms-auto">Soon</span>
+                    </a>
                 </div>
-                
+
                 <!-- Administration Section (Admin Only) -->
                 {% if session.role == 'admin' %}
-                <div class="nav-section-divider">ADMINISTRATION</div>
-                
-                <a class="nav-link {% if request.endpoint.startswith('users.') %}active{% endif %}" 
-                   href="{{ url_for('users.list_users') }}">
-                    <i class="fas fa-users me-2"></i>
-                    User Management
-                </a>
-                
-                <a class="nav-link" href="#">
-                    <i class="fas fa-building me-2"></i>
-                    Companies
-                    <span class="badge bg-light text-dark ms-2">Soon</span>
-                </a>
-                
-                <a class="nav-link" href="#">
-                    <i class="fas fa-cog me-2"></i>
-                    System Settings
-                    <span class="badge bg-light text-dark ms-2">Soon</span>
-                </a>
+                <div class="nav-section">
+                    <div class="nav-section-header">Administration</div>
+                    
+                    <a class="nav-link {{ 'active' if request.endpoint.startswith('users.') and request.endpoint != 'users.profile' }}" 
+                       href="{{ url_for('users.list_users') }}">
+                        <i class="fas fa-users me-2"></i>
+                        <span>User Management</span>
+                    </a>
+                    
+                    <a class="nav-link" href="#" style="opacity: 0.6;">
+                        <i class="fas fa-building me-2"></i>
+                        <span>Companies</span>
+                        <span class="badge bg-light text-dark ms-auto">Soon</span>
+                    </a>
+                    
+                    <a class="nav-link" href="#" style="opacity: 0.6;">
+                        <i class="fas fa-cog me-2"></i>
+                        <span>System Settings</span>
+                        <span class="badge bg-light text-dark ms-auto">Soon</span>
+                    </a>
+                </div>
                 {% endif %}
                 
                 <!-- Future Features -->
-                <div class="nav-section-divider">COMING SOON</div>
-                
-                <a class="nav-link" href="#" style="opacity: 0.6;">
-                    <i class="fas fa-university me-2"></i>
-                    Bank Reconciliation
-                </a>
-                
-                <a class="nav-link" href="#" style="opacity: 0.6;">
-                    <i class="fas fa-shopping-cart me-2"></i>
-                    Purchase Orders
-                </a>
-                
-                <a class="nav-link" href="#" style="opacity: 0.6;">
-                    <i class="fas fa-file-contract me-2"></i>
-                    Contracts Management
-                </a>
-                
+                <div class="nav-section">
+                    <div class="nav-section-header">Coming Soon</div>
+                    
+                    <a class="nav-link" href="#" style="opacity: 0.6;">
+                        <i class="fas fa-university me-2"></i>
+                        <span>Bank Reconciliation</span>
+                    </a>
+                    
+                    <a class="nav-link" href="#" style="opacity: 0.6;">
+                        <i class="fas fa-shopping-cart me-2"></i>
+                        <span>Purchase Orders</span>
+                    </a>
+                    
+                    <a class="nav-link" href="#" style="opacity: 0.6;">
+                        <i class="fas fa-file-contract me-2"></i>
+                        <span>Contracts</span>
+                    </a>
+                </div>
+
                 <!-- Account Section -->
-                <div class="nav-section-divider">ACCOUNT</div>
-                
-                <a class="nav-link {% if request.endpoint == 'users.profile' %}active{% endif %}" 
-                   href="{{ url_for('users.profile') }}">
-                    <i class="fas fa-user me-2"></i>
-                    My Profile
-                </a>
-                
-                <a class="nav-link" href="{{ url_for('auth.logout') }}">
-                    <i class="fas fa-sign-out-alt me-2"></i>
-                    Logout
-                </a>
+                <div class="nav-section">
+                    <div class="nav-section-header">Account</div>
+                    
+                    <a class="nav-link {{ 'active' if request.endpoint == 'users.profile' }}" 
+                       href="{{ url_for('users.profile') }}">
+                        <i class="fas fa-user me-2"></i>
+                        <span>My Profile</span>
+                    </a>
+                    
+                    <a class="nav-link" href="{{ url_for('auth.logout') }}">
+                        <i class="fas fa-sign-out-alt me-2"></i>
+                        <span>Logout</span>
+                    </a>
+                </div>
             </nav>
-            
-            <!-- User Info Panel -->
-            <div class="mt-4 p-3 bg-white bg-opacity-10 rounded">
-                <div class="d-flex align-items-center">
-                    <div class="user-avatar me-2">
-                        {{ session.username[0].upper() }}
-                    </div>
-                    <div>
-                        <small class="text-white d-block">{{ session.username }}</small>
-                        <span class="badge bg-light text-dark">{{ session.role|title }}</span>
-                    </div>
+        </div>
+        
+        <!-- User Info Panel - Fixed at Bottom -->
+        <div class="user-info-panel">
+            <div class="d-flex align-items-center">
+                <div class="user-avatar me-2">
+                    {{ session.username[0].upper() }}
+                </div>
+                <div class="flex-grow-1">
+                    <div class="fw-bold" style="font-size: 0.85rem;">{{ session.username }}</div>
+                    <small class="text-white-50" style="font-size: 0.7rem;">{{ session.role|title }}</small>
                 </div>
             </div>
         </div>
     </div>
+    
+    <!-- Mobile Overlay -->
+    <div class="mobile-sidebar-overlay" id="mobileOverlay" onclick="closeMobileSidebar()"></div>
     {% endif %}
     
-    <!-- Main Content -->
+    <!-- Main Content Area -->
     <div class="{% if session.user_id %}main-content{% else %}container-fluid{% endif %}">
         {% if session.user_id %}
-        <!-- Top Navigation -->
-        <nav class="navbar navbar-expand-lg navbar-light bg-white border-bottom">
-            <div class="container-fluid">
-                <h6 class="navbar-brand mb-0">{% block page_title %}Financial Voucher Management{% endblock %}</h6>
+        <!-- Top Navigation Bar -->
+        <nav class="top-navbar">
+            <div class="d-flex justify-content-between align-items-center">
+                <!-- Mobile Menu Toggle -->
+                <button class="btn btn-outline-primary mobile-toggle d-md-none" 
+                        onclick="toggleMobileSidebar()">
+                    <i class="fas fa-bars"></i>
+                </button>
                 
-                <!-- Quick Actions Dropdown -->
-                <div class="navbar-nav ms-auto d-flex flex-row">
+                <!-- Page Title -->
+                <h6 class="mb-0 flex-grow-1 ms-3 ms-md-0">
+                    {% block page_title %}Financial Voucher Management System{% endblock %}
+                </h6>
+                
+                <!-- Quick Actions -->
+                <div class="d-flex align-items-center">
+                    <!-- Notifications (placeholder) -->
                     <div class="dropdown me-3">
-                        <button class="btn btn-outline-primary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown">
-                            <i class="fas fa-plus me-1"></i>Quick Add
+                        <button class="btn btn-outline-secondary btn-sm" type="button" 
+                                data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="fas fa-bell"></i>
+                            <span class="badge bg-danger">3</span>
                         </button>
-                        <ul class="dropdown-menu">
-                            <li><a class="dropdown-item" href="{{ url_for('accounting.create_voucher_payable') }}">
-                                <i class="fas fa-file-invoice me-2"></i>Voucher Payable
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li><h6 class="dropdown-header">Notifications</h6></li>
+                            <li><a class="dropdown-item" href="#">
+                                <small class="text-muted">VP-2024-001 due in 3 days</small>
                             </a></li>
-                            <li><a class="dropdown-item" href="{{ url_for('accounting.create_check_voucher') }}">
-                                <i class="fas fa-check me-2"></i>Check Voucher
+                            <li><a class="dropdown-item" href="#">
+                                <small class="text-muted">New CV created</small>
                             </a></li>
-                            <li><hr class="dropdown-divider"></li>
-                            <li><a class="dropdown-item" href="{{ url_for('accounting.create_account') }}">
-                                <i class="fas fa-chart-line me-2"></i>Account
+                            <li><a class="dropdown-item" href="#">
+                                <small class="text-muted">Monthly report ready</small>
                             </a></li>
-                            {% if session.role == 'admin' %}
-                            <li><a class="dropdown-item" href="{{ url_for('users.create_user') }}">
-                                <i class="fas fa-user-plus me-2"></i>User
-                            </a></li>
-                            {% endif %}
                         </ul>
                     </div>
                     
-                    <span class="navbar-text me-3">
-                        <i class="fas fa-clock me-1"></i>
-                        <span id="current-time"></span>
-                    </span>
+                    <!-- Quick Create Dropdown -->
+                    <div class="dropdown">
+                        <button class="btn btn-primary btn-sm dropdown-toggle" type="button" 
+                                data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="fas fa-plus me-1"></i>Quick Add
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li>
+                                <a class="dropdown-item" href="{{ url_for('accounting.create_voucher_payable') }}">
+                                    <i class="fas fa-file-invoice me-2"></i>Voucher Payable
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item" href="{{ url_for('accounting.create_check_voucher') }}">
+                                    <i class="fas fa-check me-2"></i>Check Voucher
+                                </a>
+                            </li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li>
+                                <a class="dropdown-item" href="#" style="opacity: 0.6;">
+                                    <i class="fas fa-user-plus me-2"></i>New User
+                                    {% if session.role != 'admin' %}
+                                    <span class="badge bg-secondary ms-1">Admin Only</span>
+                                    {% endif %}
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
                 </div>
             </div>
         </nav>
         {% endif %}
         
-        <!-- Flash Messages -->
-        <div class="container-fluid pt-3">
+        <!-- Page Content -->
+        <div class="container-fluid p-4">
+            <!-- Breadcrumb Navigation (Optional) -->
+            {% block breadcrumb %}{% endblock %}
+            
+            <!-- Flash Messages -->
             {% with messages = get_flashed_messages(with_categories=true) %}
                 {% if messages %}
-                    {% for category, message in messages %}
-                        <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show" role="alert">
-                            <i class="fas fa-{{ 'exclamation-triangle' if category == 'error' else 'info-circle' if category == 'info' else 'check-circle' }} me-2"></i>
-                            {{ message }}
-                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    <div class="row">
+                        <div class="col-12">
+                            {% for category, message in messages %}
+                                <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show" role="alert">
+                                    <i class="fas fa-{{ 'exclamation-triangle' if category == 'error' else 'check-circle' if category == 'success' else 'info-circle' }} me-2"></i>
+                                    {{ message }}
+                                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                                </div>
+                            {% endfor %}
                         </div>
-                    {% endfor %}
+                    </div>
                 {% endif %}
             {% endwith %}
-        </div>
-        
-        <!-- Page Content -->
-        <main class="container-fluid p-4">
+            
+            <!-- Main Page Content -->
             {% block content %}{% endblock %}
-        </main>
+        </div>
     </div>
     
+    <!-- Bootstrap JS Bundle -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- Custom JavaScript -->
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    
+    <!-- Mobile Navigation JavaScript -->
     <script>
-        // Update current time
-        function updateTime() {
-            const now = new Date();
-            const timeElement = document.getElementById('current-time');
-            if (timeElement) {
-                timeElement.textContent = now.toLocaleTimeString();
+        function toggleMobileSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('mobileOverlay');
+            
+            sidebar.classList.toggle('mobile-open');
+            if (sidebar.classList.contains('mobile-open')) {
+                overlay.classList.add('show');
+                document.body.style.overflow = 'hidden';
+            } else {
+                overlay.classList.remove('show');
+                document.body.style.overflow = 'auto';
             }
         }
         
-        if (document.getElementById('current-time')) {
-            updateTime();
-            setInterval(updateTime, 1000);
+        function closeMobileSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('mobileOverlay');
+            
+            sidebar.classList.remove('mobile-open');
+            overlay.classList.remove('show');
+            document.body.style.overflow = 'auto';
         }
         
-        // Auto-dismiss alerts after 5 seconds
+        // Auto-dismiss success alerts after 5 seconds
         document.addEventListener('DOMContentLoaded', function() {
             setTimeout(function() {
-                const alerts = document.querySelectorAll('.alert');
+                const alerts = document.querySelectorAll('.alert-success');
                 alerts.forEach(function(alert) {
-                    if (alert.classList.contains('alert-success') || alert.classList.contains('alert-info')) {
-                        const bsAlert = new bootstrap.Alert(alert);
-                        bsAlert.close();
-                    }
+                    const bsAlert = new bootstrap.Alert(alert);
+                    bsAlert.close();
                 });
             }, 5000);
         });
         
-        // Initialize tooltips
-        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
-        var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
-            return new bootstrap.Tooltip(tooltipTriggerEl);
-        });
-        
-        // Dropdown hover functionality for better UX
-        document.querySelectorAll('.dropdown').forEach(function(dropdown) {
-            dropdown.addEventListener('mouseenter', function() {
-                this.querySelector('.dropdown-toggle').click();
-            });
-            
-            dropdown.addEventListener('mouseleave', function() {
-                setTimeout(() => {
-                    if (!this.matches(':hover')) {
-                        this.querySelector('.dropdown-toggle').click();
-                    }
-                }, 300);
+        // Handle dropdown active states
+        document.querySelectorAll('.dropdown-toggle').forEach(function(dropdown) {
+            dropdown.addEventListener('click', function() {
+                const parentNavLink = this.closest('.nav-link');
+                if (parentNavLink) {
+                    parentNavLink.classList.toggle('active');
+                }
             });
         });
     </script>
-    {% block scripts %}{% endblock %}
+    
+    {% block extra_js %}{% endblock %}
 </body>
 </html>
