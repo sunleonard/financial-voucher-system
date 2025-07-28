@@ -3,7 +3,7 @@
 User Service - Business logic for user management
 """
 
-from typing import Optional, Dict, List, Tuple
+from typing import Optional, Dict, List, Tuple  # ← ADD THIS IMPORT LINE
 import logging
 from datetime import datetime
 from core.security import SecurityManager
@@ -258,41 +258,65 @@ class UserService:
         Change user password
         Returns: (success, message)
         """
-        
-    def get_user_by_username_with_password(self, user_id: int) -> Optional[Dict]:
-        """Get user with password data for authentication (internal use only)"""
-        return self.user_model.get_by_username_with_password(user_id)
-        if not user:
-            return False, "User not found"
-        
-        # Verify current password
-        if not self.security.verify_password(current_password, user['password_hash'], user['salt']):
-            return False, "Current password is incorrect"
-        
-        # Validate new password
-        is_strong, errors = self.security.validate_password_strength(new_password)
-        if not is_strong:
-            return False, "; ".join(errors)
-        
-        # Hash new password
-        new_hash, new_salt = self.security.hash_password(new_password)
-        
-        # Update password
-        success = self.user_model.update_password(user_id, new_hash, new_salt)
-        
-        if success:
-            # Log audit trail
-            self.audit.log_action(
-                user_id=changed_by or user_id,
-                action="CHANGE_PASSWORD",
-                table_name="users",
-                record_id=str(user_id)
-            )
+        try:
+            # Get user with password data
+            user = self.user_model.get_by_username_with_password(user_id)
+            if not user:
+                return False, "User not found"
             
-            logger.info(f"Password changed for user {user_id}")
-            return True, "Password changed successfully"
-        else:
-            return False, "Failed to change password"
+            # Verify current password
+            if not self.security.verify_password(current_password, user['password_hash'], user['salt']):
+                # Log failed attempt
+                self.audit.log_action(
+                    user_id=user_id,
+                    action="PASSWORD_CHANGE_FAILED",
+                    details={'reason': 'invalid_current_password'}
+                )
+                return False, "Current password is incorrect"
+            
+            # Validate new password
+            is_strong, errors = self.security.validate_password_strength(new_password)
+            if not is_strong:
+                return False, "; ".join(errors)
+            
+            # Hash new password
+            new_hash, new_salt = self.security.hash_password(new_password)
+            
+            # Update password
+            success = self.user_model.update_password(user_id, new_hash, new_salt)
+            
+            if success:
+                # Log audit trail
+                self.audit.log_action(
+                    user_id=changed_by or user_id,
+                    action="CHANGE_PASSWORD",
+                    table_name="users",
+                    record_id=str(user_id)
+                )
+                
+                logger.info(f"Password changed for user {user_id}")
+                return True, "Password changed successfully"
+            else:
+                return False, "Failed to change password"
+                
+        except Exception as e:
+            logger.error(f"Error changing password for user {user_id}: {e}")
+            return False, "An error occurred while changing password"
+    
+    def get_users_by_company(self, company_id: str) -> List[Dict]:
+        """Get users by company ID"""
+        try:
+            query = '''
+                SELECT id, username, email, role, created_at, updated_at, 
+                       last_login, is_active
+                FROM users 
+                WHERE company_id = ? AND is_active = 1
+                ORDER BY username
+            '''
+            return self.db.fetch_all(query, (company_id,))
+        except Exception as e:
+            logger.error(f"Error getting users by company {company_id}: {e}")
+            return []
     
     def search_users(self, search_term: str, role: str = None, 
                     company_id: str = None, requester_role: str = None) -> List[Dict]:

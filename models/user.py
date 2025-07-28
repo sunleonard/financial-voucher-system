@@ -6,6 +6,7 @@ User Model - Handles user data structure and basic operations
 from typing import Optional, Dict, List
 from datetime import datetime
 import logging
+from typing import Optional, Dict, List
 
 logger = logging.getLogger(__name__)
 
@@ -275,3 +276,13 @@ class User:
         
         result = self.db.fetch_one(query, tuple(params))
         return result is None
+    
+    def get_by_username_with_password(self, user_id: int) -> Optional[Dict]:
+        """Get user with password data for authentication (internal use only)"""
+        query = '''
+            SELECT id, username, email, password_hash, salt, role, company_id, 
+                is_active
+            FROM users 
+            WHERE id = ?
+        '''
+        return self.db.fetch_one(query, (user_id,))

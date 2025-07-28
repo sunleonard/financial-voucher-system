@@ -1,0 +1,292 @@
+<!-- templates/vouchers/payable/create.html -->
+<!-- Save this as a complete file in your templates directory -->
+
+{% extends "base.html" %}
+
+{% block title %}Create Voucher Payable{% endblock %}
+{% block page_title %}Create New Voucher Payable{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-file-invoice-dollar me-2"></i>Create Voucher Payable
+                </h5>
+                <p class="mb-0 text-muted">Record a new liability - money owed to suppliers/vendors</p>
+            </div>
+            <div class="card-body">
+                <form method="POST" id="voucherForm">
+                    <!-- Payee Information Row -->
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="payee_code" class="form-label">
+                                    Payee Code <span class="text-danger">*</span>
+                                </label>
+                                <select class="form-select" id="payee_code" name="payee_code" required>
+                                    <option value="">Select Payee</option>
+                                    {% for company in companies %}
+                                    <option value="{{ company.company_id }}">
+                                        {{ company.company_id }} - {{ company.company_name }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                                <div class="form-text">Choose who you need to pay</div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="payee" class="form-label">
+                                    Payee Name <span class="text-danger">*</span>
+                                </label>
+                                <input type="text" class="form-control" id="payee" name="payee" required>
+                                <div class="form-text">Full company/person name</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Amount and Date Row -->
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="total_amount" class="form-label">
+                                    Total Amount <span class="text-danger">*</span>
+                                </label>
+                                <div class="input-group">
+                                    <span class="input-group-text">$</span>
+                                    <input type="number" class="form-control" id="total_amount" name="total_amount" 
+                                           step="0.01" min="0" required placeholder="0.00">
+                                </div>
+                                <div class="form-text">Amount you owe to this payee</div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="due_date" class="form-label">Due Date</label>
+                                <input type="date" class="form-control" id="due_date" name="due_date">
+                                <div class="form-text">When payment is due (optional)</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Description -->
+                    <div class="mb-3">
+                        <label for="description" class="form-label">Description</label>
+                        <textarea class="form-control" id="description" name="description" 
+                                  rows="3" placeholder="What is this payment for?"></textarea>
+                        <div class="form-text">Detailed description for accounting records</div>
+                    </div>
+                    
+                    <!-- Advanced Options (Collapsible) -->
+                    <div class="accordion mb-3" id="advancedAccordion">
+                        <div class="accordion-item">
+                            <h2 class="accordion-header" id="advancedHeader">
+                                <button class="accordion-button collapsed" type="button" 
+                                        data-bs-toggle="collapse" data-bs-target="#advancedOptions">
+                                    <i class="fas fa-cogs me-2"></i>Advanced Options
+                                </button>
+                            </h2>
+                            <div id="advancedOptions" class="accordion-collapse collapse" 
+                                 data-bs-parent="#advancedAccordion">
+                                <div class="accordion-body">
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                <label for="expense_code" class="form-label">Expense Account</label>
+                                                <select class="form-select" id="expense_code" name="expense_code">
+                                                    <option value="5000">5000 - Office Supplies</option>
+                                                    <option value="5010">5010 - Utilities</option>
+                                                    <option value="5020">5020 - Rent Expense</option>
+                                                    <option value="5030">5030 - Insurance Expense</option>
+                                                    <option value="5040">5040 - Professional Services</option>
+                                                    <option value="5050">5050 - Travel Expense</option>
+                                                    <option value="5060">5060 - Meals & Entertainment</option>
+                                                    <option value="5070">5070 - Equipment Rental</option>
+                                                    <option value="5080">5080 - Software & Licenses</option>
+                                                    <option value="5090">5090 - Marketing & Advertising</option>
+                                                </select>
+                                                <div class="form-text">Category for this expense</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Form Actions -->
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save me-2"></i>Create Voucher Payable
+                        </button>
+                        <a href="{{ url_for('vouchers.list_vouchers_payable') }}" class="btn btn-secondary">
+                            <i class="fas fa-times me-2"></i>Cancel
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Sidebar with Help and Information -->
+    <div class="col-md-4">
+        <!-- What is VP Card -->
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h6 class="mb-0">
+                    <i class="fas fa-question-circle me-2"></i>What is a Voucher Payable?
+                </h6>
+            </div>
+            <div class="card-body">
+                <p class="small mb-3">
+                    A <strong>Voucher Payable (VP)</strong> records money your company owes to suppliers, 
+                    vendors, or service providers. It creates a liability on your books.
+                </p>
+                
+                <h6 class="text-primary mb-2">Accounting Impact:</h6>
+                <div class="row small">
+                    <div class="col-6">
+                        <div class="text-center p-2 bg-light rounded">
+                            <strong>DEBIT</strong><br>
+                            <span class="text-success">Expense ↑</span><br>
+                            <small class="text-muted">Cost increases</small>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="text-center p-2 bg-light rounded">
+                            <strong>CREDIT</strong><br>
+                            <span class="text-warning">Payable ↑</span><br>
+                            <small class="text-muted">Debt increases</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Workflow Card -->
+        <div class="card mt-3">
+            <div class="card-header">
+                <h6 class="mb-0">
+                    <i class="fas fa-workflow me-2"></i>Typical Workflow
+                </h6>
+            </div>
+            <div class="card-body">
+                <ol class="small mb-0">
+                    <li class="mb-2">
+                        <strong>Create VP</strong><br>
+                        <span class="text-muted">Record the debt (this form)</span>
+                    </li>
+                    <li class="mb-2">
+                        <strong>Review & Approve</strong><br>
+                        <span class="text-muted">Verify amounts and details</span>
+                    </li>
+                    <li class="mb-2">
+                        <strong>Create Check Voucher</strong><br>
+                        <span class="text-muted">Make actual payment</span>
+                    </li>
+                    <li>
+                        <strong>Reconcile</strong><br>
+                        <span class="text-muted">Match with bank statement</span>
+                    </li>
+                </ol>
+            </div>
+        </div>
+        
+        <!-- Quick Stats Card -->
+        <div class="card mt-3">
+            <div class="card-header">
+                <h6 class="mb-0">
+                    <i class="fas fa-chart-line me-2"></i>Quick Stats
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="row text-center">
+                    <div class="col-6">
+                        <div class="border-end">
+                            <h5 class="text-warning mb-0">{{ stats.vouchers_payable.pending_count or 0 }}</h5>
+                            <small class="text-muted">Pending VPs</small>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <h5 class="text-success mb-0">${{ "%.0f"|format(stats.vouchers_payable.pending_amount or 0) }}</h5>
+                        <small class="text-muted">Total Owed</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const payeeCodeSelect = document.getElementById('payee_code');
+    const payeeNameInput = document.getElementById('payee');
+    const form = document.getElementById('voucherForm');
+    
+    // Auto-fill payee name when code is selected
+    payeeCodeSelect.addEventListener('change', function() {
+        const selectedOption = this.options[this.selectedIndex];
+        if (selectedOption.value) {
+            // Extract company name from "CODE - NAME" format
+            const text = selectedOption.text;
+            const namePart = text.split(' - ');
+            if (namePart.length > 1) {
+                payeeNameInput.value = namePart[1];
+            }
+        } else {
+            payeeNameInput.value = '';
+        }
+    });
+    
+    // Form validation before submission
+    form.addEventListener('submit', function(e) {
+        const amount = parseFloat(document.getElementById('total_amount').value);
+        const payeeCode = document.getElementById('payee_code').value;
+        const payeeName = document.getElementById('payee').value.trim();
+        
+        // Validate amount
+        if (!amount || amount <= 0) {
+            e.preventDefault();
+            alert('Please enter a valid amount greater than zero.');
+            document.getElementById('total_amount').focus();
+            return false;
+        }
+        
+        // Validate payee selection
+        if (!payeeCode) {
+            e.preventDefault();
+            alert('Please select a payee.');
+            document.getElementById('payee_code').focus();
+            return false;
+        }
+        
+        // Validate payee name
+        if (!payeeName) {
+            e.preventDefault();
+            alert('Please enter the payee name.');
+            document.getElementById('payee').focus();
+            return false;
+        }
+        
+        // Show loading state
+        const submitBtn = this.querySelector('button[type="submit"]');
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Creating...';
+        submitBtn.disabled = true;
+    });
+    
+    // Format amount input
+    const amountInput = document.getElementById('total_amount');
+    amountInput.addEventListener('blur', function() {
+        if (this.value) {
+            this.value = parseFloat(this.value).toFixed(2);
+        }
+    });
+});
+</script>
+{% endblock %}
