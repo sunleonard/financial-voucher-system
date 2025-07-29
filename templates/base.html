@@ -285,29 +285,79 @@
                 </div>
 
                 Financial Management Section
+                <!-- Financial Management Section -->
                 <div class="nav-section">
                     <div class="nav-section-header">Financial Management</div>
                     
-                    <!-- Vouchers Payable -->
-                    <a class="nav-link {{ 'active' if 'vouchers_payable' in request.endpoint or 'create_voucher_payable' in request.endpoint }}" 
-                       href="{{ url_for('accounting.list_vouchers_payable') }}">
+                    <!-- Payee Management Submenu -->
+                    <div class="dropdown">
+                        <a class="nav-link dropdown-toggle {{ 'active' if request.endpoint.startswith('accounting.') and 'payee' in request.endpoint }}" 
+                        href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="fas fa-users me-2"></i>
+                            <span>Payee Management</span>
+                        </a>
+                        <ul class="dropdown-menu">
+                            <li>
+                                <a class="dropdown-item {{ 'active' if request.endpoint == 'accounting.list_payees' }}" 
+                                href="{{ url_for('accounting.list_payees') }}">
+                                    <i class="fas fa-list me-2"></i>All Payees
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item {{ 'active' if request.endpoint == 'accounting.create_payee' }}" 
+                                href="{{ url_for('accounting.create_payee') }}">
+                                    <i class="fas fa-user-plus me-2"></i>Add New Payee
+                                </a>
+                            </li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li>
+                                <a class="dropdown-item" href="{{ url_for('accounting.list_payees') }}?type=Vendor">
+                                    <i class="fas fa-truck me-2"></i>Vendors
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item" href="{{ url_for('accounting.list_payees') }}?type=Company">
+                                    <i class="fas fa-building me-2"></i>Companies
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item" href="{{ url_for('accounting.list_payees') }}?type=Employee">
+                                    <i class="fas fa-user-tie me-2"></i>Employees
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item" href="{{ url_for('accounting.list_payees') }}?type=Customer">
+                                    <i class="fas fa-handshake me-2"></i>Customers
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
+                    
+                    <!-- Voucher Management -->
+                    <a class="nav-link {{ 'active' if request.endpoint == 'accounting.list_vouchers_payable' }}" 
+                    href="{{ url_for('accounting.list_vouchers_payable') }}">
                         <i class="fas fa-file-invoice me-2"></i>
                         <span>Vouchers Payable</span>
-                        <small class="text-muted d-block" style="margin-left: 22px;">Payment Obligations</small>
                     </a>
                     
-                    <!-- Check Vouchers -->
-                    <a class="nav-link {{ 'active' if 'check_vouchers' in request.endpoint or 'create_check_voucher' in request.endpoint }}" 
-                       href="{{ url_for('accounting.list_check_vouchers') }}">
+                    <a class="nav-link {{ 'active' if request.endpoint == 'accounting.list_check_vouchers' }}" 
+                    href="{{ url_for('accounting.list_check_vouchers') }}">
                         <i class="fas fa-check me-2"></i>
                         <span>Check Vouchers</span>
-                        <small class="text-muted d-block" style="margin-left: 22px;">Payments Made</small>
                     </a>
                     
+                    <!-- Account Management (Admin Only) -->
+                    {% if session.role == 'admin' %}
+                    <a class="nav-link {{ 'active' if request.endpoint == 'accounting.list_accounts' }}" 
+                    href="{{ url_for('accounting.list_accounts') }}">
+                        <i class="fas fa-chart-pie me-2"></i>
+                        <span>Chart of Accounts</span>
+                    </a>
+                    {% endif %}
+                    
                     <!-- Quick Create Dropdown -->
-                    <div class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle" href="#" role="button" 
-                           data-bs-toggle="dropdown" aria-expanded="false">
+                    <div class="dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                             <i class="fas fa-plus-circle me-2"></i>
                             <span>Quick Create</span>
                         </a>
@@ -324,35 +374,19 @@
                             </li>
                             <li><hr class="dropdown-divider"></li>
                             <li>
-                                <a class="dropdown-item" href="#" style="opacity: 0.6;">
-                                    <i class="fas fa-building me-2"></i>New Company/Vendor
-                                    <span class="badge bg-secondary ms-1">Soon</span>
+                                <a class="dropdown-item" href="{{ url_for('accounting.create_payee') }}">
+                                    <i class="fas fa-user-plus me-2"></i>New Payee
                                 </a>
                             </li>
+                            {% if session.role == 'admin' %}
+                            <li>
+                                <a class="dropdown-item" href="{{ url_for('accounting.create_account') }}">
+                                    <i class="fas fa-chart-line me-2"></i>New Account
+                                </a>
+                            </li>
+                            {% endif %}
                         </ul>
                     </div>
-                </div>
-
-                <!-- Reports & Analytics -->
-                <div class="nav-section">
-                    <div class="nav-section-header">Reports & Analytics</div>
-                    
-                    <a class="nav-link" href="{{ url_for('accounting.list_vouchers_payable') }}">
-                        <i class="fas fa-chart-bar me-2"></i>
-                        <span>Financial Reports</span>
-                    </a>
-                    
-                    <a class="nav-link" href="#" style="opacity: 0.6;">
-                        <i class="fas fa-balance-scale me-2"></i>
-                        <span>Trial Balance</span>
-                        <span class="badge bg-light text-dark ms-auto">Soon</span>
-                    </a>
-                    
-                    <a class="nav-link" href="#" style="opacity: 0.6;">
-                        <i class="fas fa-file-export me-2"></i>
-                        <span>Export Data</span>
-                        <span class="badge bg-light text-dark ms-auto">Soon</span>
-                    </a>
                 </div>
 
                 <!-- Administration Section (Admin Only) -->
