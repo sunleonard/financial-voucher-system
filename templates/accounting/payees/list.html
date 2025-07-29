@@ -1,0 +1,323 @@
+{% extends "base.html" %}
+
+{% block title %}Payee Management{% endblock %}
+{% block page_title %}Payee Management{% endblock %}
+
+{% block content %}
+<!-- Summary Statistics Row -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <h3 class="text-primary">{{ summary_stats.total_payees }}</h3>
+                <p class="mb-0">Total Payees</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <h3 class="text-success">{{ summary_stats.active_payees }}</h3>
+                <p class="mb-0">Active Payees</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <h3 class="text-warning">${{ "%.2f"|format(summary_stats.total_outstanding) }}</h3>
+                <p class="mb-0">Outstanding Balance</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <a href="{{ url_for('accounting.create_payee') }}" class="btn btn-primary btn-lg">
+                    <i class="fas fa-plus me-2"></i>Add Payee
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Search and Filter -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body">
+                <form method="GET" class="row g-3">
+                    <div class="col-md-4">
+                        <label for="search" class="form-label">Search Payees</label>
+                        <input type="text" class="form-control" id="search" name="q" 
+                               value="{{ current_search }}" placeholder="Search by name or code...">
+                    </div>
+                    <div class="col-md-3">
+                        <label for="type_filter" class="form-label">Type Filter</label>
+                        <select class="form-select" id="type_filter" name="type">
+                            <option value="">All Types</option>
+                            {% for type in payee_types %}
+                            <option value="{{ type }}" {{ 'selected' if type == current_type }}>{{ type }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label for="sort_filter" class="form-label">Sort By</label>
+                        <select class="form-select" id="sort_filter" name="sort">
+                            <option value="name" {{ 'selected' if current_sort == 'name' }}>Name</option>
+                            <option value="code" {{ 'selected' if current_sort == 'code' }}>Code</option>
+                            <option value="type" {{ 'selected' if current_sort == 'type' }}>Type</option>
+                            <option value="recent" {{ 'selected' if current_sort == 'recent' }}>Recent Activity</option>
+                            <option value="balance" {{ 'selected' if current_sort == 'balance' }}>Outstanding Balance</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">&nbsp;</label>
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-search me-1"></i>Search
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Payees List -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-users me-2"></i>Payees 
+                    <span class="badge bg-primary ms-2">{{ payees|length }}</span>
+                </h5>
+                <div class="btn-group" role="group">
+                    <button class="btn btn-outline-secondary btn-sm" onclick="exportPayees()">
+                        <i class="fas fa-download me-1"></i>Export
+                    </button>
+                    <button class="btn btn-outline-info btn-sm" onclick="toggleView()">
+                        <i class="fas fa-th me-1"></i>Toggle View
+                    </button>
+                </div>
+            </div>
+            <div class="card-body">
+                {% if payees %}
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover" id="payeesTable">
+                        <thead>
+                            <tr>
+                                <th>Code</th>
+                                <th>Name</th>
+                                <th>Type</th>
+                                <th>Outstanding Balance</th>
+                                <th>Transactions</th>
+                                <th>Last Activity</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for payee in payees %}
+                            <tr class="{{ 'table-warning' if payee.outstanding_balance > 0 else '' }}">
+                                <td><strong>{{ payee.acct_code }}</strong></td>
+                                <td>
+                                    <a href="{{ url_for('accounting.view_payee', payee_code=payee.acct_code) }}" 
+                                       class="text-decoration-none">
+                                        {{ payee.acct_description }}
+                                    </a>
+                                    {% if payee.acct_prefix %}
+                                        <br><small class="text-muted">{{ payee.acct_prefix }}</small>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <span class="badge bg-{{ 
+                                        'primary' if payee.acct_type == 'Company' 
+                                        else 'success' if payee.acct_type == 'Customer'
+                                        else 'info' if payee.acct_type == 'Employee'
+                                        else 'warning' 
+                                    }}">
+                                        {{ payee.acct_type }}
+                                    </span>
+                                </td>
+                                <td class="text-end">
+                                    {% if payee.outstanding_balance > 0 %}
+                                        <strong class="text-warning">${{ "%.2f"|format(payee.outstanding_balance) }}</strong>
+                                    {% elif payee.outstanding_balance < 0 %}
+                                        <span class="text-info">${{ "%.2f"|format(payee.outstanding_balance) }}</span>
+                                    {% else %}
+                                        <span class="text-muted">$0.00</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-center">
+                                    {% if payee.transaction_count > 0 %}
+                                        <span class="badge bg-info">{{ payee.transaction_count }}</span>
+                                    {% else %}
+                                        <span class="text-muted">0</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if payee.last_transaction_date %}
+                                        {{ payee.last_transaction_date }}
+                                    {% else %}
+                                        <span class="text-muted">No activity</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <div class="btn-group" role="group">
+                                        <a href="{{ url_for('accounting.view_payee', payee_code=payee.acct_code) }}" 
+                                           class="btn btn-sm btn-outline-primary" title="View Details">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
+                                        <a href="{{ url_for('accounting.create_voucher_payable') }}?payee={{ payee.acct_code }}" 
+                                           class="btn btn-sm btn-outline-success" title="Create VP">
+                                            <i class="fas fa-file-invoice"></i>
+                                        </a>
+                                        <a href="{{ url_for('accounting.create_check_voucher') }}?payee={{ payee.acct_code }}" 
+                                           class="btn btn-sm btn-outline-info" title="Create CV">
+                                            <i class="fas fa-check"></i>
+                                        </a>
+                                        <div class="dropdown">
+                                            <button class="btn btn-sm btn-outline-secondary dropdown-toggle" 
+                                                    type="button" data-bs-toggle="dropdown">
+                                                <i class="fas fa-ellipsis-v"></i>
+                                            </button>
+                                            <ul class="dropdown-menu">
+                                                <li>
+                                                    <a class="dropdown-item" href="{{ url_for('accounting.edit_payee', payee_code=payee.acct_code) }}">
+                                                        <i class="fas fa-edit me-2"></i>Edit
+                                                    </a>
+                                                </li>
+                                                <li><hr class="dropdown-divider"></li>
+                                                <li>
+                                                    <a class="dropdown-item text-danger" href="#" 
+                                                       onclick="deactivatePayee('{{ payee.acct_code }}')">
+                                                        <i class="fas fa-ban me-2"></i>Deactivate
+                                                    </a>
+                                                </li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center py-5">
+                    <i class="fas fa-users fa-3x text-muted mb-3"></i>
+                    <h5 class="text-muted">No Payees Found</h5>
+                    {% if current_search or current_type %}
+                        <p class="text-muted">No payees match your search criteria.</p>
+                        <a href="{{ url_for('accounting.list_payees') }}" class="btn btn-outline-primary me-2">
+                            <i class="fas fa-times me-2"></i>Clear Filters
+                        </a>
+                        <a href="{{ url_for('accounting.create_payee') }}" class="btn btn-primary">
+                            <i class="fas fa-plus me-2"></i>Add Payee
+                        </a>
+                    {% else %}
+                        <p class="text-muted">Add your first payee to start creating vouchers.</p>
+                        <a href="{{ url_for('accounting.create_payee') }}" class="btn btn-primary">
+                            <i class="fas fa-plus me-2"></i>Add First Payee
+                        </a>
+                    {% endif %}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Payee Type Summary -->
+{% if summary_stats.by_type %}
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h6 class="card-title mb-0">Payee Summary by Type</h6>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    {% for type_name, type_data in summary_stats.by_type.items() %}
+                    <div class="col-md-3 mb-3">
+                        <div class="text-center border rounded p-3">
+                            <h5 class="text-{{ 'primary' if type_name == 'Company' else 'success' if type_name == 'Customer' else 'info' if type_name == 'Employee' else 'warning' }}">
+                                {{ type_data.count }}
+                            </h5>
+                            <p class="mb-1">{{ type_name }}s</p>
+                            <small class="text-muted">
+                                Outstanding: ${{ "%.2f"|format(type_data.outstanding) }}
+                            </small>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<script>
+function deactivatePayee(payeeCode) {
+    if (confirm(`Are you sure you want to deactivate payee ${payeeCode}?`)) {
+        fetch(`/accounting/payees/${payeeCode}/deactivate`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert(data.message);
+                location.reload();
+            } else {
+                alert('Error: ' + data.message);
+            }
+        })
+        .catch(error => {
+            alert('Error deactivating payee: ' + error.message);
+        });
+    }
+}
+
+function exportPayees() {
+    // Simple CSV export functionality
+    const table = document.getElementById('payeesTable');
+    let csv = 'Code,Name,Type,Outstanding Balance,Transactions,Last Activity\n';
+    
+    const rows = table.getElementsByTagName('tbody')[0].getElementsByTagName('tr');
+    for (let row of rows) {
+        const cells = row.getElementsByTagName('td');
+        csv += `"${cells[0].textContent.trim()}","${cells[1].textContent.trim()}","${cells[2].textContent.trim()}","${cells[3].textContent.trim()}","${cells[4].textContent.trim()}","${cells[5].textContent.trim()}"\n`;
+    }
+    
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.setAttribute('hidden', '');
+    a.setAttribute('href', url);
+    a.setAttribute('download', 'payees.csv');
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+}
+
+function toggleView() {
+    // Toggle between table and card view (placeholder)
+    alert('Card view coming soon!');
+}
+
+// Auto-submit search form on type change
+document.getElementById('type_filter').addEventListener('change', function() {
+    this.form.submit();
+});
+
+document.getElementById('sort_filter').addEventListener('change', function() {
+    this.form.submit();
+});
+</script>
+{% endblock %}

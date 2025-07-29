@@ -526,6 +526,213 @@ def create_accounting_blueprint(db_manager):
             logger.error(f"Error getting VP details {vp_number}: {e}")
             return jsonify({'error': 'Error retrieving VP details'}), 500
 
-    
+
+    @accounting_bp.route('/api/accounts/search')
+    @login_required
+    def api_search_accounts():
+        """API endpoint to search accounts for frontend autocomplete"""
+        try:
+            search_term = request.args.get('q', '').strip()
+            if len(search_term) < 2:
+                return jsonify([])
+            
+            # Search in account definitions
+            accounts = account_model.search_accounts(search_term)
+            
+            # Format for frontend use
+            formatted_accounts = [
+                {
+                    'acct_code': acc['acct_code'],
+                    'acct_description': acc['acct_description'],
+                    'acct_type': acc['acct_type'],
+                    'acct_prefix': acc.get('acct_prefix', ''),
+                    'display': f"{acc['acct_code']} - {acc['acct_description']}"
+                }
+                for acc in accounts
+            ]
+            
+            return jsonify(formatted_accounts)
+            
+        except Exception as e:
+            logger.error(f"Error searching accounts: {e}")
+            return jsonify({'error': 'Failed to search accounts'}), 500
+
+# ====== PAYEE CRUD ROUTES ======
+    @accounting_bp.route('/api/accounts/payees')
+    @login_required
+    def api_get_payees():
+        """API endpoint to get payee accounts"""
+        try:
+            payees = account_model.get_payees()
+            
+            formatted_payees = [
+                {
+                    'code': payee['acct_code'],
+                    'name': payee['acct_description'],
+                    'type': payee['acct_type'],
+                    'display': f"{payee['acct_code']} - {payee['acct_description']}"
+                }
+                for payee in payees
+            ]
+            
+            return jsonify(formatted_payees)
+            
+        except Exception as e:
+            logger.error(f"Error getting payees: {e}")
+            return jsonify({'error': 'Failed to get payees'}), 500
+
+    @accounting_bp.route('/api/accounts/by-type/<account_type>')
+    @login_required
+    def api_get_accounts_by_type(account_type):
+        """API endpoint to get accounts by type"""
+        try:
+            accounts = account_model.get_by_type(account_type)
+            
+            formatted_accounts = [
+                {
+                    'code': acc['acct_code'],
+                    'description': acc['acct_description'],
+                    'type': acc['acct_type'],
+                    'display': f"{acc['acct_code']} - {acc['acct_description']}"
+                }
+                for acc in accounts
+            ]
+            
+            return jsonify(formatted_accounts)
+            
+        except Exception as e:
+            logger.error(f"Error getting accounts by type {account_type}: {e}")
+            return jsonify({'error': 'Failed to get accounts'}), 500
+
+    @accounting_bp.route('/api/bank-accounts')
+    @login_required
+    def api_get_bank_accounts():
+        """API endpoint to get bank accounts for check vouchers"""
+        try:
+            bank_accounts = account_model.get_by_prefix('BANK')
+            
+            # Add default bank accounts if none exist
+            if not bank_accounts:
+                bank_accounts = [
+                    {'acct_code': '1010', 'acct_description': 'Primary Checking Account', 'acct_type': 'Asset'},
+                    {'acct_code': '1020', 'acct_description': 'Secondary Checking Account', 'acct_type': 'Asset'},
+                    {'acct_code': '1030', 'acct_description': 'Petty Cash Account', 'acct_type': 'Asset'}
+                ]
+            
+            formatted_accounts = [
+                {
+                    'code': acc['acct_code'],
+                    'description': acc['acct_description'],
+                    'display': f"{acc['acct_code']} - {acc['acct_description']}"
+                }
+                for acc in bank_accounts
+            ]
+            
+            return jsonify(formatted_accounts)
+            
+        except Exception as e:
+            logger.error(f"Error getting bank accounts: {e}")
+            return jsonify({'error': 'Failed to get bank accounts'}), 500
+
+    # Account Management Routes
+    @accounting_bp.route('/accounts/create', methods=['GET', 'POST'])
+    @login_required
+    @admin_required
+    def create_account():
+        """Create new account definition"""
+        if request.method == 'GET':
+            return render_template('accounting/accounts/create.html')
+        
+        # Handle POST - account creation
+        try:
+            acct_code = request.form.get('acct_code', '').strip().upper()
+            acct_description = request.form.get('acct_description', '').strip()
+            acct_type = request.form.get('acct_type', 'Company')
+            acct_prefix = request.form.get('acct_prefix', '').strip() or None
+            
+            if not all([acct_code, acct_description]):
+                flash('Account code and description are required', 'error')
+                return redirect(request.url)
+            
+            # Check if account code already exists
+            existing = account_model.get_by_code(acct_code)
+            if existing:
+                flash(f'Account code {acct_code} already exists', 'error')
+                return redirect(request.url)
+            
+            # Create account
+            account_id = account_model.create(
+                acct_code=acct_code,
+                acct_description=acct_description,
+                acct_type=acct_type,
+                acct_prefix=acct_prefix
+            )
+            
+            if account_id:
+                flash(f'Account {acct_code} created successfully', 'success')
+                # If opened in popup, show success page
+                if request.args.get('popup'):
+                    return render_template('accounting/accounts/created.html', 
+                                         account_code=acct_code)
+                else:
+                    return redirect(url_for('accounting.list_accounts'))
+            else:
+                flash('Failed to create account', 'error')
+                return redirect(request.url)
+                
+        except Exception as e:
+            logger.error(f"Error creating account: {e}")
+            flash('An error occurred while creating the account', 'error')
+            return redirect(request.url)
+
+    @accounting_bp.route('/accounts')
+    @login_required
+    def list_accounts():
+        """List all accounts"""
+        try:
+            accounts = account_model.get_all()
+            accounts_by_category = account_model.get_accounts_by_category()
+            stats = account_model.get_account_statistics()
+            
+            return render_template('accounting/accounts/list.html',
+                                 accounts=accounts,
+                                 accounts_by_category=accounts_by_category,
+                                 stats=stats)
+                                 
+        except Exception as e:
+            logger.error(f"Error listing accounts: {e}")
+            flash('Error loading accounts', 'error')
+            return redirect(url_for('accounting.dashboard'))
+
+    @accounting_bp.route('/trial-balance')  
+    @login_required
+    def trial_balance():
+        """Trial balance report - placeholder"""
+        try:
+            accounts = account_model.get_all()
+            
+            # Simplified trial balance - in real system would calculate from ledger
+            trial_balance_data = []
+            for account in accounts:
+                trial_balance_data.append({
+                    'account_code': account['acct_code'],
+                    'account_name': account['acct_description'],
+                    'account_type': account['acct_type'],
+                    'debit_balance': 0.00,  # Would calculate from transactions
+                    'credit_balance': 0.00  # Would calculate from transactions
+                })
+            
+            return render_template('accounting/trial_balance.html',
+                                 accounts=trial_balance_data)
+                                 
+        except Exception as e:
+            logger.error(f"Error generating trial balance: {e}")
+            flash('Error generating trial balance', 'error')
+            return redirect(url_for('accounting.dashboard'))
+
+
+
+
+
     # Return the blueprint
     return accounting_bp

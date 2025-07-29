@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 
 {% block title %}Create Check Voucher{% endblock %}
-{% block page_title %}Create Check Voucher{% endblock %}
+{% block page_title %}Create New Check Voucher{% endblock %}
 
 {% block content %}
 <div class="row">
@@ -11,120 +11,131 @@
                 <h5 class="card-title mb-0">
                     <i class="fas fa-check me-2"></i>Create Check Voucher
                 </h5>
+                <p class="mb-0 text-muted">Record an actual payment to reduce cash and settle obligations</p>
             </div>
             <div class="card-body">
-                <form method="POST" id="cvForm">
-                    <!-- Basic Information -->
-                    <div class="row mb-3">
-                        <div class="col-md-6">
-                            <label for="transaction_date" class="form-label">Transaction Date <span class="text-danger">*</span></label>
-                            <input type="date" class="form-control" id="transaction_date" name="transaction_date" 
-                                   value="{{ date.today() }}" required>
-                        </div>
-                        <div class="col-md-6">
-                            <label for="check_number" class="form-label">Check Number</label>
-                            <input type="text" class="form-control" id="check_number" name="check_number" 
-                                   placeholder="Check #123">
-                            <div class="form-text">Optional: Physical check number</div>
-                        </div>
-                    </div>
-
-                    <!-- VP Reference -->
+                <form method="POST" id="checkVoucherForm">
+                    <!-- Link to VP (Optional) -->
                     <div class="mb-3">
-                        <label for="vp_number" class="form-label">Link to Voucher Payable (VP)</label>
-                        <select class="form-select" id="vp_number" name="vp_number" onchange="loadVPDetails()">
-                            <option value="">Select existing VP to pay (optional)</option>
+                        <label for="vp_number" class="form-label">Link to Voucher Payable (Optional)</label>
+                        <select class="form-select" id="vp_number" name="vp_number" onchange="loadVPDetails(this.value)">
+                            <option value="">Select VP to pay (or leave blank for direct payment)</option>
                             {% for vp in open_vps %}
-                            <option value="{{ vp.number }}" data-payee="{{ vp.payee }}" 
-                                    data-amount="{{ vp.total_amount }}" data-payee-code="{{ vp.payee_code }}">
+                            <option value="{{ vp.number }}" data-payee-code="{{ vp.payee_code }}" data-amount="{{ vp.total_amount }}">
                                 {{ vp.number }} - {{ vp.payee }} (${{ "%.2f"|format(vp.total_amount) }})
                             </option>
                             {% endfor %}
                         </select>
-                        <div class="form-text">Select a VP to automatically fill payee and amount details</div>
+                        <div class="form-text">Select an existing VP to automatically fill payee and amount details</div>
+                    </div>
+
+                    <!-- Transaction Date -->
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="transaction_date" class="form-label">Payment Date <span class="text-danger">*</span></label>
+                                <input type="date" class="form-control" id="transaction_date" name="transaction_date" 
+                                       value="{{ moment().format('YYYY-MM-DD') }}" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="check_number" class="form-label">Check Number</label>
+                                <input type="text" class="form-control" id="check_number" name="check_number"
+                                       placeholder="Optional physical check number">
+                                <div class="form-text">Leave blank for electronic payments</div>
+                            </div>
+                        </div>
                     </div>
 
                     <!-- Payee Information -->
-                    <div class="row mb-3">
-                        <div class="col-md-4">
-                            <label for="payee_code" class="form-label">Payee Code <span class="text-danger">*</span></label>
-                            <select class="form-select" id="payee_code" name="payee_code" required>
-                                <option value="">Select Payee</option>
-                                {% for payee in payees %}
-                                <option value="{{ payee.code }}">{{ payee.code }} - {{ payee.name }}</option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                        <div class="col-md-4">
-                            <label for="total_amount" class="form-label">Payment Amount <span class="text-danger">*</span></label>
-                            <div class="input-group">
-                                <span class="input-group-text">$</span>
-                                <input type="number" class="form-control" id="total_amount" name="total_amount" 
-                                       step="0.01" min="0.01" required onchange="updateBalanceCheck()">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="payee_code" class="form-label">Payee <span class="text-danger">*</span></label>
+                                <select class="form-select" id="payee_code" name="payee_code" required>
+                                    <option value="">Select Payee</option>
+                                    {% for payee in payees %}
+                                    <option value="{{ payee.acct_code }}">
+                                        {{ payee.acct_description }} ({{ payee.acct_code }})
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                                <div class="form-text">
+                                    <a href="{{ url_for('accounting.create_payee') }}" target="_blank">
+                                        Add new payee
+                                    </a>
+                                </div>
                             </div>
                         </div>
-                        <div class="col-md-4">
-                            <label for="bank_account" class="form-label">Bank Account <span class="text-danger">*</span></label>
-                            <select class="form-select" id="bank_account" name="bank_account" required>
-                                <option value="">Select Bank Account</option>
-                                {% for bank in bank_accounts %}
-                                <option value="{{ bank.code }}">{{ bank.code }} - {{ bank.description }}</option>
-                                {% endfor %}
-                            </select>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="total_amount" class="form-label">Payment Amount <span class="text-danger">*</span></label>
+                                <div class="input-group">
+                                    <span class="input-group-text">$</span>
+                                    <input type="number" class="form-control" id="total_amount" name="total_amount" 
+                                           step="0.01" min="0.01" required onchange="updateBalanceCheck()">
+                                </div>
+                            </div>
                         </div>
                     </div>
 
-                    <!-- Description -->
-                    <div class="mb-3">
-                        <label for="description" class="form-label">Description</label>
-                        <textarea class="form-control" id="description" name="description" rows="2" 
-                                  placeholder="Payment description..."></textarea>
+                    <!-- Bank Account -->
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="bank_account" class="form-label">Bank Account <span class="text-danger">*</span></label>
+                                <select class="form-select" id="bank_account" name="bank_account" required>
+                                    <option value="">Select Bank Account</option>
+                                    {% for bank in bank_accounts %}
+                                    <option value="{{ bank.acct_code if bank.acct_code else bank.code }}">
+                                        {{ bank.acct_description if bank.acct_description else bank.description }} 
+                                        ({{ bank.acct_code if bank.acct_code else bank.code }})
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                                <div class="form-text">
+                                    <a href="{{ url_for('accounting.list_bank_accounts') }}" target="_blank">
+                                        Manage bank accounts
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="description" class="form-label">Description</label>
+                                <input type="text" class="form-control" id="description" name="description"
+                                       placeholder="Payment description (auto-filled if VP selected)">
+                            </div>
+                        </div>
                     </div>
 
-                    <!-- Advanced Accounting Section -->
+                    <!-- Advanced Credit/Debit Lines (Collapsible) -->
                     <div class="card mb-3">
                         <div class="card-header">
-                            <h6 class="mb-0">
-                                <i class="fas fa-calculator me-2"></i>Accounting Entries
-                                <small class="text-muted">(Optional: Advanced double-entry details)</small>
-                            </h6>
+                            <button class="btn btn-link p-0 text-decoration-none" type="button" 
+                                    data-bs-toggle="collapse" data-bs-target="#advancedAccounting">
+                                <i class="fas fa-chevron-down me-2"></i>Advanced Accounting (Optional)
+                            </button>
                         </div>
-                        <div class="card-body">
-                            <!-- Credit/Debit Lines -->
-                            <div class="mb-3">
-                                <div class="d-flex justify-content-between align-items-center mb-2">
-                                    <label class="form-label mb-0">Credit/Debit Lines</label>
-                                    <button type="button" class="btn btn-sm btn-outline-primary" onclick="addCreditDebitLine()">
-                                        <i class="fas fa-plus me-1"></i>Add Line
-                                    </button>
-                                </div>
-                                
-                                <div id="creditDebitLines">
-                                    <!-- Credit/Debit lines will be added here dynamically -->
-                                </div>
-                            </div>
-
-                            <!-- Balance Check -->
-                            <div class="alert alert-info" id="balanceAlert" style="display: none;">
-                                <div class="d-flex justify-content-between align-items-center">
-                                    <span>
-                                        <i class="fas fa-info-circle me-2"></i>
-                                        <strong>Balance Check:</strong>
-                                    </span>
-                                    <span id="balanceStatus"></span>
-                                </div>
-                                <div class="mt-2">
-                                    <small>
-                                        Total Amount: $<span id="headerTotal">0.00</span> | 
-                                        Line Items Total: $<span id="linesTotal">0.00</span> | 
-                                        Difference: $<span id="balanceDiff">0.00</span>
-                                    </small>
+                        <div class="collapse" id="advancedAccounting">
+                            <div class="card-body">
+                                <div class="mb-3">
+                                    <div class="d-flex justify-content-between align-items-center mb-2">
+                                        <label class="form-label mb-0">Credit/Debit Lines</label>
+                                        <button type="button" class="btn btn-sm btn-outline-primary" onclick="addCreditDebitLine()">
+                                            <i class="fas fa-plus me-1"></i>Add Line
+                                        </button>
+                                    </div>
+                                    <div id="creditDebitLines">
+                                        <!-- Dynamic credit/debit lines will be added here -->
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     </div>
                     
-                    <!-- Hidden fields for counting lines -->
+                    <!-- Hidden fields -->
                     <input type="hidden" id="cd_line_count" name="cd_line_count" value="0">
                     
                     <!-- Form Actions -->
@@ -135,8 +146,8 @@
                         <a href="{{ url_for('accounting.list_check_vouchers') }}" class="btn btn-secondary">
                             <i class="fas fa-times me-2"></i>Cancel
                         </a>
-                        <button type="button" class="btn btn-outline-info" onclick="validateBalance()">
-                            <i class="fas fa-calculator me-2"></i>Check Balance
+                        <button type="button" class="btn btn-outline-info" onclick="validatePayment()">
+                            <i class="fas fa-calculator me-2"></i>Validate Payment
                         </button>
                     </div>
                 </form>
@@ -146,69 +157,32 @@
     
     <!-- Help Panel -->
     <div class="col-md-4">
-        <!-- What is CV Card -->
         <div class="card">
             <div class="card-header">
-                <h6 class="mb-0">
-                    <i class="fas fa-question-circle me-2"></i>What is a Check Voucher?
-                </h6>
+                <h6 class="card-title mb-0">Check Voucher Guide</h6>
             </div>
             <div class="card-body">
-                <p class="small mb-3">
-                    A <strong>Check Voucher (CV)</strong> records actual payments made to vendors, 
-                    suppliers, or service providers. It represents money leaving your company.
-                </p>
+                <h6 class="text-success">What is a Check Voucher?</h6>
+                <p class="small">A CV records an actual payment, reducing cash and settling liabilities. It can pay an existing VP or be a direct payment.</p>
                 
-                <h6 class="text-success mb-2">Accounting Impact:</h6>
-                <div class="row small">
-                    <div class="col-6">
-                        <div class="text-center p-2 bg-light rounded">
-                            <strong>DEBIT</strong><br>
-                            <span class="text-warning">Payable ↓</span><br>
-                            <small class="text-muted">Debt decreases</small>
-                        </div>
-                    </div>
-                    <div class="col-6">
-                        <div class="text-center p-2 bg-light rounded">
-                            <strong>CREDIT</strong><br>
-                            <span class="text-danger">Cash ↓</span><br>
-                            <small class="text-muted">Money out</small>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        
-        <!-- Workflow Card -->
-        <div class="card mt-3">
-            <div class="card-header">
-                <h6 class="mb-0">
-                    <i class="fas fa-workflow me-2"></i>Payment Workflow
-                </h6>
-            </div>
-            <div class="card-body">
-                <ol class="small mb-0">
-                    <li class="mb-2">
-                        <strong>VP Created</strong><br>
-                        <span class="text-muted">Payment obligation recorded</span>
+                <h6 class="text-success mt-3">Double-Entry Impact</h6>
+                <ul class="small">
+                    <li><strong>Debit:</strong> Accounts Payable (or Expense)</li>
+                    <li><strong>Credit:</strong> Cash/Bank Account</li>
+                </ul>
+                
+                <h6 class="text-success mt-3">Payment Process</h6>
+                <ol class="small">
+                    <li><strong>VP Updated</strong><br>
+                        <span class="text-muted">Liability reduced</span>
                     </li>
-                    <li class="mb-2">
-                        <strong>CV Created</strong><br>
-                        <span class="text-muted">Actual payment made (this form)</span>
-                    </li>
-                    <li class="mb-2">
-                        <strong>VP Paid</strong><br>
-                        <span class="text-muted">Obligation marked as satisfied</span>
-                    </li>
-                    <li class="mb-0">
-                        <strong>Bank Updated</strong><br>
+                    <li><strong>Bank Updated</strong><br>
                         <span class="text-muted">Cash balance adjusted</span>
                     </li>
                 </ol>
             </div>
         </div>
 
-        <!-- Quick Tips -->
         <div class="card mt-3">
             <div class="card-header">
                 <h6 class="mb-0">
@@ -232,146 +206,426 @@
                 </ul>
             </div>
         </div>
+
+        <div class="card mt-3">
+            <div class="card-header">
+                <h6 class="card-title mb-0">Quick Actions</h6>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <a href="{{ url_for('accounting.list_payees') }}" class="btn btn-outline-primary">
+                        <i class="fas fa-users me-2"></i>Manage Payees
+                    </a>
+                    <a href="{{ url_for('accounting.list_bank_accounts') }}" class="btn btn-outline-info">
+                        <i class="fas fa-university me-2"></i>Bank Accounts
+                    </a>
+                    <a href="{{ url_for('accounting.list_vouchers_payable') }}" class="btn btn-outline-warning">
+                        <i class="fas fa-list me-2"></i>Outstanding VPs
+                    </a>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
+{% endblock %}
 
+{% block extra_js %}
 <script>
 let creditDebitLineCount = 0;
 
-function loadVPDetails() {
+// Enhanced CV form with VP integration
+document.addEventListener('DOMContentLoaded', function() {
     const vpSelect = document.getElementById('vp_number');
-    const selectedOption = vpSelect.options[vpSelect.selectedIndex];
+    const payeeSelect = document.getElementById('payee_code');
+    const amountInput = document.getElementById('total_amount');
     
-    if (selectedOption.value) {
-        // Auto-fill from selected VP
-        document.getElementById('payee_code').value = selectedOption.dataset.payeeCode || '';
-        document.getElementById('total_amount').value = selectedOption.dataset.amount || '';
-        document.getElementById('description').value = `Payment for ${selectedOption.value}`;
-        
-        updateBalanceCheck();
+    // Pre-select from URL parameters
+    const urlParams = new URLSearchParams(window.location.search);
+    const preselectedVP = urlParams.get('vp');
+    const preselectedPayee = urlParams.get('payee');
+    
+    if (preselectedVP && vpSelect) {
+        vpSelect.value = preselectedVP;
+        loadVPDetails(preselectedVP);
     }
+    
+    if (preselectedPayee && payeeSelect) {
+        payeeSelect.value = preselectedPayee;
+        loadPayeeDetails(preselectedPayee);
+    }
+    
+    // Enhanced VP selection
+    if (vpSelect) {
+        vpSelect.addEventListener('change', function() {
+            if (this.value) {
+                loadVPDetails(this.value);
+            } else {
+                clearVPDetails();
+            }
+        });
+    }
+
+    // Enhanced payee search
+    if (payeeSelect) {
+        createPayeeSearchField();
+    }
+});
+
+function createPayeeSearchField() {
+    const payeeSelect = document.getElementById('payee_code');
+    if (!payeeSelect) return;
+    
+    // Create new search input
+    const searchContainer = document.createElement('div');
+    searchContainer.className = 'position-relative';
+    
+    const searchInput = document.createElement('input');
+    searchInput.type = 'text';
+    searchInput.className = 'form-control';
+    searchInput.placeholder = 'Search payees by name or code...';
+    searchInput.setAttribute('autocomplete', 'off');
+    
+    const dropdown = document.createElement('div');
+    dropdown.className = 'dropdown-menu w-100';
+    dropdown.style.maxHeight = '200px';
+    dropdown.style.overflowY = 'auto';
+    
+    searchContainer.appendChild(searchInput);
+    searchContainer.appendChild(dropdown);
+    
+    // Replace select with search input
+    payeeSelect.style.display = 'none';
+    payeeSelect.parentNode.insertBefore(searchContainer, payeeSelect.nextSibling);
+    
+    let searchTimeout;
+    
+    searchInput.addEventListener('input', function() {
+        clearTimeout(searchTimeout);
+        const query = this.value.trim();
+        
+        if (query.length < 2) {
+            dropdown.classList.remove('show');
+            return;
+        }
+        
+        searchTimeout = setTimeout(() => {
+            searchPayees(query, dropdown, searchInput, payeeSelect);
+        }, 300);
+    });
+    
+    searchInput.addEventListener('focus', function() {
+        if (this.value.length >= 2) {
+            dropdown.classList.add('show');
+        }
+    });
+    
+    // Close dropdown when clicking outside
+    document.addEventListener('click', function(e) {
+        if (!searchContainer.contains(e.target)) {
+            dropdown.classList.remove('show');
+        }
+    });
+}
+
+function searchPayees(query, dropdown, searchInput, payeeSelect) {
+    fetch(`/accounting/api/payees/search?q=${encodeURIComponent(query)}&limit=10`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                displayPayeeSearchResults(data.payees, dropdown, searchInput, payeeSelect);
+            }
+        })
+        .catch(error => {
+            console.error('Error searching payees:', error);
+        });
+}
+
+function displayPayeeSearchResults(payees, dropdown, searchInput, payeeSelect) {
+    dropdown.innerHTML = '';
+    
+    if (payees.length === 0) {
+        const noResults = document.createElement('div');
+        noResults.className = 'dropdown-item-text text-muted';
+        noResults.textContent = 'No payees found';
+        dropdown.appendChild(noResults);
+    } else {
+        payees.forEach(payee => {
+            const item = document.createElement('a');
+            item.className = 'dropdown-item';
+            item.href = '#';
+            item.innerHTML = `
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <strong>${payee.code}</strong> - ${payee.name}
+                        <br><small class="text-muted">${payee.type}</small>
+                    </div>
+                    <span class="badge bg-${payee.type === 'Company' ? 'primary' : payee.type === 'Customer' ? 'success' : payee.type === 'Employee' ? 'info' : 'warning'}">
+                        ${payee.type}
+                    </span>
+                </div>
+            `;
+            
+            item.addEventListener('click', function(e) {
+                e.preventDefault();
+                selectPayee(payee, searchInput, payeeSelect, dropdown);
+            });
+            
+            dropdown.appendChild(item);
+        });
+    }
+    
+    dropdown.classList.add('show');
+}
+
+function selectPayee(payee, searchInput, payeeSelect, dropdown) {
+    searchInput.value = `${payee.code} - ${payee.name}`;
+    payeeSelect.value = payee.code;
+    dropdown.classList.remove('show');
+    
+    // Load additional payee details
+    loadPayeeDetails(payee.code);
+    
+    // Trigger change event
+    payeeSelect.dispatchEvent(new Event('change'));
+}
+
+function loadVPDetails(vpNumber) {
+    if (!vpNumber) return;
+    
+    fetch(`/accounting/api/vp/${vpNumber}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Auto-fill form with VP details
+                const payeeSelect = document.getElementById('payee_code');
+                const amountInput = document.getElementById('total_amount');
+                const descriptionInput = document.getElementById('description');
+                
+                if (payeeSelect) payeeSelect.value = data.vp.payee_code;
+                if (amountInput) amountInput.value = data.vp.total_amount;
+                if (descriptionInput) descriptionInput.value = `Payment for ${vpNumber} - ${data.vp.description}`;
+                
+                // Show VP information
+                displayVPInfo(data.vp);
+                
+                // Validate remaining amount
+                if (data.vp.remaining_amount < data.vp.total_amount) {
+                    showPartialPaymentWarning(data.vp);
+                }
+
+                // Update payee search field if exists
+                const payeeSearchInput = payeeSelect.parentNode.querySelector('input');
+                if (payeeSearchInput) {
+                    payeeSearchInput.value = `${data.vp.payee_code} - ${data.vp.payee}`;
+                }
+            }
+        })
+        .catch(error => {
+            console.error('Error loading VP details:', error);
+        });
+}
+
+function displayVPInfo(vpData) {
+    let infoPanel = document.getElementById('vpInfo');
+    if (!infoPanel) {
+        infoPanel = document.createElement('div');
+        infoPanel.id = 'vpInfo';
+        infoPanel.className = 'alert alert-info mt-2';
+        
+        const vpContainer = document.getElementById('vp_number').closest('.mb-3');
+        vpContainer.appendChild(infoPanel);
+    }
+    
+    infoPanel.innerHTML = `
+        <div class="row">
+            <div class="col-md-6">
+                <h6 class="mb-1">VP: ${vpData.number}</h6>
+                <small class="text-muted">${vpData.payee} • $${vpData.total_amount.toFixed(2)}</small>
+            </div>
+            <div class="col-md-6 text-end">
+                <small class="text-muted">
+                    ${vpData.due_date ? `Due: ${vpData.due_date}` : 'No due date'}<br>
+                    Remaining: $${(vpData.remaining_amount || vpData.total_amount).toFixed(2)}
+                </small>
+            </div>
+        </div>
+        <div class="mt-2">
+            <a href="/accounting/transactions/${vpData.number}" target="_blank" class="btn btn-sm btn-outline-info">
+                <i class="fas fa-eye me-1"></i>View VP Details
+            </a>
+        </div>
+    `;
+}
+
+function showPartialPaymentWarning(vpData) {
+    const warningEl = document.createElement('div');
+    warningEl.className = 'alert alert-warning mt-2';
+    warningEl.innerHTML = `
+        <i class="fas fa-exclamation-triangle me-2"></i>
+        <strong>Partial Payment:</strong> This VP has been partially paid. 
+        Remaining balance: $${(vpData.remaining_amount || vpData.total_amount).toFixed(2)}
+    `;
+    
+    const vpContainer = document.getElementById('vp_number').closest('.mb-3');
+    vpContainer.appendChild(warningEl);
+}
+
+function clearVPDetails() {
+    const infoPanel = document.getElementById('vpInfo');
+    if (infoPanel) {
+        infoPanel.remove();
+    }
+    
+    // Clear auto-filled fields
+    const descriptionInput = document.getElementById('description');
+    if (descriptionInput && descriptionInput.value.startsWith('Payment for VP-')) {
+        descriptionInput.value = '';
+    }
+}
+
+function loadPayeeDetails(payeeCode) {
+    if (!payeeCode) return;
+    
+    fetch(`/accounting/api/payees/${payeeCode}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                displayPayeeInfo(data);
+            }
+        })
+        .catch(error => {
+            console.error('Error loading payee details:', error);
+        });
+}
+
+function displayPayeeInfo(payeeData) {
+    // Show payee information panel
+    let infoPanel = document.getElementById('payeeInfo');
+    if (!infoPanel) {
+        infoPanel = document.createElement('div');
+        infoPanel.id = 'payeeInfo';
+        infoPanel.className = 'alert alert-info mt-2';
+        
+        const payeeContainer = document.getElementById('payee_code').closest('.mb-3');
+        payeeContainer.appendChild(infoPanel);
+    }
+    
+    infoPanel.innerHTML = `
+        <div class="row">
+            <div class="col-md-8">
+                <h6 class="mb-1">${payeeData.payee.name}</h6>
+                <small class="text-muted">
+                    ${payeeData.payee.code} • ${payeeData.payee.type}
+                    ${payeeData.summary.outstanding_balance > 0 ? 
+                        ` • Outstanding: $${payeeData.summary.outstanding_balance.toFixed(2)}` : ''}
+                </small>
+            </div>
+            <div class="col-md-4 text-end">
+                <small class="text-muted">
+                    ${payeeData.summary.transaction_count} transactions<br>
+                    <a href="/accounting/payees/${payeeData.payee.code}" target="_blank" class="text-decoration-none">
+                        View Details <i class="fas fa-external-link-alt"></i>
+                    </a>
+                </small>
+            </div>
+        </div>
+    `;
 }
 
 function addCreditDebitLine() {
     const container = document.getElementById('creditDebitLines');
-    const lineDiv = document.createElement('div');
-    lineDiv.className = 'border rounded p-3 mb-2';
-    lineDiv.id = `cd_line_${creditDebitLineCount}`;
+    const lineNumber = creditDebitLineCount++;
     
-    lineDiv.innerHTML = `
-        <div class="row">
+    const lineHtml = `
+        <div class="row mb-2 cd-line" id="cdLine${lineNumber}">
             <div class="col-md-3">
-                <label class="form-label">Account Code</label>
-                <input type="text" class="form-control" name="cd_acct_code_${creditDebitLineCount}" 
-                       placeholder="e.g., 5000" onchange="updateBalanceCheck()">
+                <input type="text" class="form-control" name="cd_acct_code_${lineNumber}" 
+                       placeholder="Account Code" required>
             </div>
             <div class="col-md-4">
-                <label class="form-label">Description</label>
-                <input type="text" class="form-control" name="cd_acct_desc_${creditDebitLineCount}" 
-                       placeholder="Account description">
+                <input type="text" class="form-control" name="cd_acct_desc_${lineNumber}" 
+                       placeholder="Description">
             </div>
             <div class="col-md-2">
-                <label class="form-label">Amount</label>
-                <input type="number" class="form-control" name="cd_amount_${creditDebitLineCount}" 
-                       step="0.01" min="0" onchange="updateBalanceCheck()">
+                <input type="number" class="form-control" name="cd_amount_${lineNumber}" 
+                       placeholder="Amount" step="0.01" required>
             </div>
             <div class="col-md-2">
-                <label class="form-label">Type</label>
-                <select class="form-select" name="cd_acct_type_${creditDebitLineCount}">
-                    <option value="debit">Debit</option>
-                    <option value="credit">Credit</option>
+                <select class="form-select" name="cd_acct_type_${lineNumber}" required>
+                    <option value="">Type</option>
+                    <option value="D">Debit</option>
+                    <option value="C">Credit</option>
                 </select>
             </div>
             <div class="col-md-1">
-                <label class="form-label">&nbsp;</label>
-                <button type="button" class="btn btn-outline-danger btn-sm d-block" 
-                        onclick="removeCreditDebitLine(${creditDebitLineCount})">
-                    <i class="fas fa-trash"></i>
+                <button type="button" class="btn btn-outline-danger btn-sm" onclick="removeLine('cdLine${lineNumber}')">
+                    <i class="fas fa-times"></i>
                 </button>
             </div>
         </div>
     `;
     
-    container.appendChild(lineDiv);
-    creditDebitLineCount++;
-    
-    // Update hidden field
+    container.insertAdjacentHTML('beforeend', lineHtml);
     document.getElementById('cd_line_count').value = creditDebitLineCount;
-    
-    updateBalanceCheck();
 }
 
-function removeCreditDebitLine(lineId) {
-    const lineDiv = document.getElementById(`cd_line_${lineId}`);
-    if (lineDiv) {
-        lineDiv.remove();
-        updateBalanceCheck();
-    }
+function removeLine(lineId) {
+    document.getElementById(lineId).remove();
 }
 
 function updateBalanceCheck() {
-    const headerAmount = parseFloat(document.getElementById('total_amount').value) || 0;
-    let linesTotal = 0;
+    const amount = parseFloat(document.getElementById('total_amount').value) || 0;
+    const vpSelect = document.getElementById('vp_number');
     
-    // Calculate total from credit/debit lines
-    const cdLines = document.querySelectorAll('#creditDebitLines input[name*="cd_amount_"]');
-    cdLines.forEach(input => {
-        linesTotal += parseFloat(input.value) || 0;
-    });
-    
-    const difference = Math.abs(headerAmount - linesTotal);
-    
-    // Update display
-    document.getElementById('headerTotal').textContent = headerAmount.toFixed(2);
-    document.getElementById('linesTotal').textContent = linesTotal.toFixed(2);
-    document.getElementById('balanceDiff').textContent = difference.toFixed(2);
-    
-    const balanceAlert = document.getElementById('balanceAlert');
-    const balanceStatus = document.getElementById('balanceStatus');
-    
-    if (cdLines.length > 0) {
-        balanceAlert.style.display = 'block';
+    if (vpSelect.value && amount > 0) {
+        // Check if amount exceeds VP amount
+        const selectedOption = vpSelect.options[vpSelect.selectedIndex];
+        const vpAmount = parseFloat(selectedOption.dataset.amount);
         
-        if (difference < 0.01) {
-            balanceAlert.className = 'alert alert-success';
-            balanceStatus.innerHTML = '<i class="fas fa-check-circle text-success"></i> Balanced';
-        } else {
-            balanceAlert.className = 'alert alert-warning';
-            balanceStatus.innerHTML = '<i class="fas fa-exclamation-triangle text-warning"></i> Out of Balance';
+        if (amount > vpAmount) {
+            showPaymentWarning(`Payment amount ($${amount.toFixed(2)}) exceeds VP amount ($${vpAmount.toFixed(2)})`);
         }
-    } else {
-        balanceAlert.style.display = 'none';
     }
 }
 
-function validateBalance() {
-    updateBalanceCheck();
-    
-    const headerAmount = parseFloat(document.getElementById('total_amount').value) || 0;
-    const cdLines = document.querySelectorAll('#creditDebitLines input[name*="cd_amount_"]');
-    
-    if (cdLines.length === 0) {
-        alert('No detailed entries found. The system will create automatic entries.');
-        return;
+function showPaymentWarning(message) {
+    let warningEl = document.getElementById('paymentWarning');
+    if (!warningEl) {
+        warningEl = document.createElement('div');
+        warningEl.id = 'paymentWarning';
+        warningEl.className = 'alert alert-warning mt-2';
+        
+        const amountContainer = document.getElementById('total_amount').closest('.mb-3');
+        amountContainer.appendChild(warningEl);
     }
     
-    let linesTotal = 0;
-    cdLines.forEach(input => {
-        linesTotal += parseFloat(input.value) || 0;
-    });
-    
-    const difference = Math.abs(headerAmount - linesTotal);
-    
-    if (difference < 0.01) {
-        alert('✅ Entries are balanced! Ready to submit.');
-    } else {
-        alert(`⚠️ Entries are out of balance by $${difference.toFixed(2)}. Please review your entries.`);
-    }
+    warningEl.innerHTML = `<i class="fas fa-exclamation-triangle me-2"></i>${message}`;
 }
 
-// Initialize
-document.addEventListener('DOMContentLoaded', function() {
-    updateBalanceCheck();
-});
+function validatePayment() {
+    const amount = parseFloat(document.getElementById('total_amount').value) || 0;
+    const payee = document.getElementById('payee_code').value;
+    const bankAccount = document.getElementById('bank_account').value;
+    
+    let validationMessage = [];
+    
+    if (!payee) validationMessage.push('❌ Payee is required');
+    else validationMessage.push('✅ Payee selected');
+    
+    if (!bankAccount) validationMessage.push('❌ Bank account is required');
+    else validationMessage.push('✅ Bank account selected');
+    
+    if (amount <= 0) validationMessage.push('❌ Amount must be greater than zero');
+    else validationMessage.push(`✅ Payment amount: $${amount.toFixed(2)}`);
+    
+    const vpNumber = document.getElementById('vp_number').value;
+    if (vpNumber) {
+        validationMessage.push(`✅ Linked to VP: ${vpNumber}`);
+    } else {
+        validationMessage.push('ℹ️ Direct payment (not linked to VP)');
+    }
+    
+    alert(validationMessage.join('\n'));
+}
 </script>
 {% endblock %}

@@ -1,0 +1,189 @@
+<!-- templates/accounting/payees/create.html -->
+{% extends "base.html" %}
+
+{% block title %}Create Payee{% endblock %}
+{% block page_title %}Add New Payee{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-user-plus me-2"></i>Add New Payee
+                </h5>
+                <p class="mb-0 text-muted">Create a new payee for voucher transactions</p>
+            </div>
+            <div class="card-body">
+                <form method="POST" id="createPayeeForm">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="payee_name" class="form-label">Payee Name <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="payee_name" name="payee_name" required
+                                       placeholder="Enter company or person name">
+                                <div class="form-text">Full legal name of the payee</div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="payee_type" class="form-label">Payee Type <span class="text-danger">*</span></label>
+                                <select class="form-select" id="payee_type" name="payee_type" required>
+                                    <option value="Company">Company</option>
+                                    <option value="Vendor" selected>Vendor</option>
+                                    <option value="Customer">Customer</option>
+                                    <option value="Employee">Employee</option>
+                                </select>
+                                <div class="form-text">Classification of the payee</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="contact_email" class="form-label">Contact Email</label>
+                                <input type="email" class="form-control" id="contact_email" name="contact_email"
+                                       placeholder="contact@company.com">
+                                <div class="form-text">Primary email for correspondence</div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="contact_phone" class="form-label">Contact Phone</label>
+                                <input type="tel" class="form-control" id="contact_phone" name="contact_phone"
+                                       placeholder="(555) 123-4567">
+                                <div class="form-text">Primary phone number</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="address" class="form-label">Address</label>
+                        <textarea class="form-control" id="address" name="address" rows="3"
+                                  placeholder="Street address, city, state, zip code"></textarea>
+                        <div class="form-text">Full mailing address</div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="payment_terms" class="form-label">Payment Terms</label>
+                                <select class="form-select" id="payment_terms" name="payment_terms">
+                                    <option value="">Select terms</option>
+                                    <option value="Net 15">Net 15</option>
+                                    <option value="Net 30" selected>Net 30</option>
+                                    <option value="Net 45">Net 45</option>
+                                    <option value="Net 60">Net 60</option>
+                                    <option value="Due on Receipt">Due on Receipt</option>
+                                    <option value="COD">Cash on Delivery</option>
+                                </select>
+                                <div class="form-text">Default payment terms</div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="tax_id" class="form-label">Tax ID / EIN</label>
+                                <input type="text" class="form-control" id="tax_id" name="tax_id"
+                                       placeholder="XX-XXXXXXX">
+                                <div class="form-text">Tax identification number</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <strong>Payee Code:</strong> Will be automatically generated based on type (e.g., VEND001, COMP002)
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save me-2"></i>Create Payee
+                        </button>
+                        <a href="{{ url_for('accounting.list_payees') }}" class="btn btn-secondary">
+                            <i class="fas fa-times me-2"></i>Cancel
+                        </a>
+                        <button type="button" class="btn btn-outline-info" onclick="previewPayeeCode()">
+                            <i class="fas fa-eye me-2"></i>Preview Code
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Quick Reference -->
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h6 class="card-title mb-0">Payee Types</h6>
+            </div>
+            <div class="card-body">
+                <dl class="mb-0">
+                    <dt>Company</dt>
+                    <dd class="small text-muted">Other businesses or corporations</dd>
+                    
+                    <dt>Vendor</dt>
+                    <dd class="small text-muted">Suppliers of goods or services</dd>
+                    
+                    <dt>Customer</dt>
+                    <dd class="small text-muted">Clients receiving refunds/credits</dd>
+                    
+                    <dt>Employee</dt>
+                    <dd class="small text-muted">Staff members for expense reimbursements</dd>
+                </dl>
+            </div>
+        </div>
+
+        <div class="card mt-3">
+            <div class="card-header">
+                <h6 class="card-title mb-0">After Creation</h6>
+            </div>
+            <div class="card-body">
+                <ul class="small mb-0">
+                    <li>Payee will be available in VP creation</li>
+                    <li>Payee will be available in CV creation</li>
+                    <li>You can create transactions immediately</li>
+                    <li>Edit payee details anytime</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function previewPayeeCode() {
+    const payeeType = document.getElementById('payee_type').value;
+    const prefixes = {
+        'Company': 'COMP',
+        'Vendor': 'VEND',
+        'Customer': 'CUST',
+        'Employee': 'EMP'
+    };
+    
+    const prefix = prefixes[payeeType] || 'PAYEE';
+    alert(`Generated payee code will be like: ${prefix}001, ${prefix}002, etc.`);
+}
+
+// Auto-update form help text based on payee type
+document.getElementById('payee_type').addEventListener('change', function() {
+    const type = this.value;
+    const nameInput = document.getElementById('payee_name');
+    
+    switch(type) {
+        case 'Company':
+            nameInput.placeholder = 'Enter company name';
+            break;
+        case 'Vendor':
+            nameInput.placeholder = 'Enter vendor/supplier name';
+            break;
+        case 'Customer':
+            nameInput.placeholder = 'Enter customer name';
+            break;
+        case 'Employee':
+            nameInput.placeholder = 'Enter employee name';
+            break;
+    }
+});
+</script>
+{% endblock %}

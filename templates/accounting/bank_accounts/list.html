@@ -1,0 +1,243 @@
+<!-- templates/accounting/bank_accounts/list.html -->
+{% extends "base.html" %}
+
+{% block title %}Bank Accounts{% endblock %}
+{% block page_title %}Bank Account Management{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-university me-2"></i>Bank Accounts
+                </h5>
+                <a href="{{ url_for('accounting.create_bank_account') }}" class="btn btn-primary">
+                    <i class="fas fa-plus me-2"></i>Add Bank Account
+                </a>
+            </div>
+            <div class="card-body">
+                {% if bank_accounts %}
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Account Code</th>
+                                <th>Account Name</th>
+                                <th>Type</th>
+                                <th>Recent Activity</th>
+                                <th>Last Used</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for bank in bank_accounts %}
+                            <tr>
+                                <td><strong>{{ bank.acct_code }}</strong></td>
+                                <td>{{ bank.acct_description }}</td>
+                                <td>
+                                    <span class="badge bg-info">{{ bank.acct_type }}</span>
+                                </td>
+                                <td>
+                                    <span class="badge bg-{{ 'success' if bank.recent_activity_count > 0 else 'secondary' }}">
+                                        {{ bank.recent_activity_count }} transactions
+                                    </span>
+                                </td>
+                                <td>
+                                    {% if bank.last_activity %}
+                                        {{ bank.last_activity }}
+                                    {% else %}
+                                        <span class="text-muted">No activity</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <div class="btn-group" role="group">
+                                        <button class="btn btn-sm btn-outline-info" 
+                                                onclick="viewBankDetails('{{ bank.acct_code }}')" title="View Details">
+                                            <i class="fas fa-eye"></i>
+                                        </button>
+                                        <a href="{{ url_for('accounting.view_account_ledger', acct_code=bank.acct_code) }}" 
+                                           class="btn btn-sm btn-outline-primary" title="View Ledger">
+                                            <i class="fas fa-book"></i>
+                                        </a>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center py-5">
+                    <i class="fas fa-university fa-3x text-muted mb-3"></i>
+                    <h5 class="text-muted">No Bank Accounts Found</h5>
+                    <p class="text-muted">Add your first bank account to start managing payments.</p>
+                    <a href="{{ url_for('accounting.create_bank_account') }}" class="btn btn-primary">
+                        <i class="fas fa-plus me-2"></i>Add Bank Account
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Bank Details Modal -->
+<div class="modal fade" id="bankDetailsModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Bank Account Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="bankDetailsContent">
+                <div class="text-center">
+                    <div class="spinner-border" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function viewBankDetails(bankCode) {
+    const modal = new bootstrap.Modal(document.getElementById('bankDetailsModal'));
+    modal.show();
+    
+    fetch(`/accounting/api/bank-accounts/${bankCode}`)
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('bankDetailsContent').innerHTML = `
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>Bank Information</h6>
+                        <dl class="row">
+                            <dt class="col-sm-4">Code:</dt>
+                            <dd class="col-sm-8">${data.bank.code}</dd>
+                            <dt class="col-sm-4">Name:</dt>
+                            <dd class="col-sm-8">${data.bank.name}</dd>
+                            <dt class="col-sm-4">Type:</dt>
+                            <dd class="col-sm-8">${data.bank.type}</dd>
+                        </dl>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>Activity Summary</h6>
+                        <dl class="row">
+                            <dt class="col-sm-6">Recent Transactions:</dt>
+                            <dd class="col-sm-6">${data.summary.recent_activity}</dd>
+                            <dt class="col-sm-6">Total Disbursements:</dt>
+                            <dd class="col-sm-6">$${data.summary.total_disbursements.toFixed(2)}</dd>
+                        </dl>
+                    </div>
+                </div>
+                
+                <h6 class="mt-4">Recent Transactions</h6>
+                <div class="table-responsive">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>Number</th>
+                                <th>Type</th>
+                                <th>Date</th>
+                                <th>Payee</th>
+                                <th>Amount</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${data.recent_transactions.map(t => `
+                                <tr>
+                                    <td>${t.number}</td>
+                                    <td><span class="badge bg-${t.type === 'CV' ? 'success' : 'warning'}">${t.type}</span></td>
+                                    <td>${t.date}</td>
+                                    <td>${t.payee}</td>
+                                    <td>$${t.amount.toFixed(2)}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            `;
+        })
+        .catch(error => {
+            document.getElementById('bankDetailsContent').innerHTML = `
+                <div class="alert alert-danger">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    Error loading bank details: ${error.message}
+                </div>
+            `;
+        });
+}
+</script>
+{% endblock %}
+
+
+<!-- templates/accounting/bank_accounts/create.html -->
+{% extends "base.html" %}
+
+{% block title %}Create Bank Account{% endblock %}
+{% block page_title %}Add New Bank Account{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-university me-2"></i>Add Bank Account
+                </h5>
+            </div>
+            <div class="card-body">
+                <form method="POST">
+                    <div class="mb-3">
+                        <label for="bank_name" class="form-label">Bank Name <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="bank_name" name="bank_name" required
+                               placeholder="e.g., First National Bank">
+                        <div class="form-text">Full name of the bank or financial institution</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="bank_type" class="form-label">Account Type <span class="text-danger">*</span></label>
+                        <select class="form-select" id="bank_type" name="bank_type" required>
+                            <option value="Checking">Checking Account</option>
+                            <option value="Savings">Savings Account</option>
+                            <option value="Money Market">Money Market</option>
+                            <option value="Petty Cash">Petty Cash</option>
+                            <option value="Credit Line">Credit Line</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="account_number" class="form-label">Account Number</label>
+                        <input type="text" class="form-control" id="account_number" name="account_number"
+                               placeholder="Optional - for reference only">
+                        <div class="form-text">Optional - this information is for reference only</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="routing_number" class="form-label">Routing Number</label>
+                        <input type="text" class="form-control" id="routing_number" name="routing_number"
+                               placeholder="Optional - for reference only">
+                        <div class="form-text">Optional - this information is for reference only</div>
+                    </div>
+                    
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <strong>Account Code:</strong> Will be automatically generated (e.g., BANK001, BANK002)
+                    </div>
+                    
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save me-2"></i>Create Bank Account
+                        </button>
+                        <a href="{{ url_for('accounting.list_bank_accounts') }}" class="btn btn-secondary">
+                            <i class="fas fa-times me-2"></i>Cancel
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

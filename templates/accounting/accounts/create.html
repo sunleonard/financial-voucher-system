@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+
+{% block title %}Create Account{% endblock %}
+{% block page_title %}Create New Account{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-plus-circle me-2"></i>Create New Account
+                </h5>
+            </div>
+            <div class="card-body">
+                <form method="POST">
+                    <div class="mb-3">
+                        <label for="acct_code" class="form-label">Account Code <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="acct_code" name="acct_code" required
+                               placeholder="e.g., VEND005, COMP003">
+                        <div class="form-text">Unique identifier for this account</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="acct_description" class="form-label">Account Description <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="acct_description" name="acct_description" required
+                               placeholder="e.g., ABC Supply Company">
+                        <div class="form-text">Full name or description</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="acct_type" class="form-label">Account Type <span class="text-danger">*</span></label>
+                        <select class="form-select" id="acct_type" name="acct_type" required>
+                            <option value="Company">Company</option>
+                            <option value="Customer">Customer</option>
+                            <option value="Employee">Employee</option>
+                            <option value="Vendor">Vendor</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="acct_prefix" class="form-label">Account Prefix</label>
+                        <input type="text" class="form-control" id="acct_prefix" name="acct_prefix"
+                               placeholder="e.g., VEND, COMP">
+                        <div class="form-text">Optional grouping prefix</div>
+                    </div>
+                    
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save me-2"></i>Create Account
+                        </button>
+                        <button type="button" class="btn btn-secondary" onclick="window.close()">
+                            <i class="fas fa-times me-2"></i>Cancel
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Auto-generate account code based on type and description
+document.getElementById('acct_type').addEventListener('change', function() {
+    const type = this.value;
+    let prefix = '';
+    
+    switch(type) {
+        case 'Company': prefix = 'COMP'; break;
+        case 'Customer': prefix = 'CUST'; break;
+        case 'Employee': prefix = 'EMP'; break;
+        case 'Vendor': prefix = 'VEND'; break;
+    }
+    
+    document.getElementById('acct_prefix').value = prefix;
+    
+    // Auto-suggest account code
+    const description = document.getElementById('acct_description').value;
+    if (description) {
+        generateAccountCode(prefix, description);
+    }
+});
+
+document.getElementById('acct_description').addEventListener('blur', function() {
+    const prefix = document.getElementById('acct_prefix').value || 'ACCT';
+    generateAccountCode(prefix, this.value);
+});
+
+function generateAccountCode(prefix, description) {
+    if (!description) return;
+    
+    // Simple code generation - in practice, you'd check for uniqueness
+    const number = String(Math.floor(Math.random() * 900) + 100);
+    const suggestedCode = prefix + number;
+    
+    const codeInput = document.getElementById('acct_code');
+    if (!codeInput.value) {
+        codeInput.value = suggestedCode;
+    }
+}
+</script>
+{% endblock %}

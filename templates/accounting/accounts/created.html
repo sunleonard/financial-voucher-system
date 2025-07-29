@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Account Created Successfully</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+    <div class="container-fluid d-flex align-items-center justify-content-center min-vh-100">
+        <div class="card border-success" style="max-width: 400px;">
+            <div class="card-header bg-success text-white text-center">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-check-circle me-2"></i>Success!
+                </h5>
+            </div>
+            <div class="card-body text-center">
+                <div class="mb-3">
+                    <i class="fas fa-user-plus text-success" style="font-size: 3rem;"></i>
+                </div>
+                <h6 class="card-title">Account Created Successfully</h6>
+                <p class="card-text">
+                    Account <strong>{{ account_code }}</strong> has been created and is now available for use.
+                </p>
+                <div class="d-grid gap-2">
+                    <button type="button" class="btn btn-success" onclick="closeAndRefresh()">
+                        <i class="fas fa-check me-2"></i>Close & Continue
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary" onclick="createAnother()">
+                        <i class="fas fa-plus me-2"></i>Create Another Account
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function closeAndRefresh() {
+            // Try to refresh the parent window's payee dropdown
+            if (window.opener) {
+                try {
+                    // Refresh parent window
+                    window.opener.location.reload();
+                } catch (e) {
+                    // If cross-origin, just close
+                    console.log('Could not refresh parent window');
+                }
+            }
+            
+            // Close this popup
+            window.close();
+        }
+        
+        function createAnother() {
+            // Go back to create account form
+            window.location.href = "{{ url_for('accounting.create_account') }}";
+        }
+        
+        // Auto-close after 3 seconds if user doesn't interact
+        setTimeout(function() {
+            if (confirm('Auto-closing in 3 seconds. Click OK to close now or Cancel to keep open.')) {
+                closeAndRefresh();
+            }
+        }, 3000);
+    </script>
+</body>
+</html>
